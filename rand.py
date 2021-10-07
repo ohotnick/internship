@@ -1,4 +1,5 @@
 import xlsxwriter
+import matplotlib.pyplot as plt
 
 #number_pack = input("Введите разницу пакетов")
 #mod_count_1 = int(0)
@@ -107,3 +108,9 @@ else:
     print(grap_x)
     print(mod_count_1,mod_count_2,rest_number)
 
+#график
+a_graf = [1,2,3,4,5]
+b_graf = [1,2,3,4,5]
+#plt.plot(a_graf,b_graf)
+plt.plot(grap_x)
+plt.show()
