@@ -106,7 +106,10 @@ always_ff @( posedge clk_i )
 				gen_writedata_AvMM_M_o_tv <= 32'h2008;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 				gen_write_AvMM_M_o_tv     <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
-				  flagMM_1 <= 1;
+				  begin
+				    flagMM_1 <= 1;
+					gen_write_AvMM_M_o_tv     <= 0;
+				  end
 			  end
 			else if( flagMM_2 == 0 )                     //Read
 			  begin
@@ -115,7 +118,10 @@ always_ff @( posedge clk_i )
 				gen_address_AvMM_M_o_tv   <= 8'h2;
 				gen_read_AvMM_M_o_tv      <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
-				  flagMM_2 <= 1;
+				  begin
+				    flagMM_2 <= 1;
+					gen_read_AvMM_M_o_tv      <= 0;
+				  end
 			  end
 			else if( flagMM_3 == 0 )
 			  begin
