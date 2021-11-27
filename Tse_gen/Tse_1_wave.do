@@ -42,6 +42,7 @@ if [regexp {/tb/dut/reg_busy} [find signals /tb/dut/reg_busy]]              {add
 
 #test line
 add wave -noupdate -divider -height 40 {GEN INTERFACE} 
+add wave -noupdate -divider -height 40 {AVALON-MM M} 
 if [regexp {/tb/dut_gen/clk_i} [find signals /tb/dut_gen/clk_i]]                        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/clk_i}
 if [regexp {/tb/dut_gen/srst_i} [find signals /tb/dut_gen/srst_i]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/srst_i}
 
@@ -52,6 +53,16 @@ if [regexp {/tb/dut_gen/gen_address_AvMM_M_o} [find signals /tb/dut_gen/gen_addr
 if [regexp {/tb/dut_gen/gen_write_AvMM_M_o} [find signals /tb/dut_gen/gen_write_AvMM_M_o]]                            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_write_AvMM_M_o}
 if [regexp {/tb/dut_gen/gen_writedata_AvMM_M_o} [find signals /tb/dut_gen/gen_writedata_AvMM_M_o]]                    {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_writedata_AvMM_M_o}
 if [regexp {/tb/dut_gen/gen_read_AvMM_M_o} [find signals /tb/dut_gen/gen_read_AvMM_M_o]]                              {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_read_AvMM_M_o}
+
+add wave -noupdate -divider -height 40 {AVALON-MM S}
+if [regexp {/tb/dut_gen/gen_address_AvMM_S_i} [find signals /tb/dut_gen/gen_address_AvMM_S_i]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_address_AvMM_S_i}
+if [regexp {/tb/dut_gen/gen_write_AvMM_S_i} [find signals /tb/dut_gen/gen_write_AvMM_S_i]]                          {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_write_AvMM_S_i}
+if [regexp {/tb/dut_gen/gen_writedata_AvMM_S_i} [find signals /tb/dut_gen/gen_writedata_AvMM_S_i]]                  {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_writedata_AvMM_S_i}
+if [regexp {/tb/dut_gen/gen_read_AvMM_S_i} [find signals /tb/dut_gen/gen_read_AvMM_S_i]]                            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_read_AvMM_S_i}
+
+if [regexp {/tb/dut_gen/gen_readdata_AvMM_S_o} [find signals /tb/dut_gen/gen_readdata_AvMM_S_o]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_readdata_AvMM_S_o}
+if [regexp {/tb/dut_gen/gen_readdatavalid_AvMM_S_o} [find signals /tb/dut_gen/gen_readdatavalid_AvMM_S_o]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_readdatavalid_AvMM_S_o}
+if [regexp {/tb/dut_gen/gen_waitrequest_AvMM_S_o} [find signals /tb/dut_gen/gen_waitrequest_AvMM_S_o]]                {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_waitrequest_AvMM_S_o}
 
 
 add wave -noupdate -divider -height 40 {RECEIVE INTERFACE}
@@ -175,7 +186,11 @@ if [regexp {/tb/dut/tx_ff_uflow} [find signals /tb/dut/tx_ff_uflow]]        {add
 if [regexp {/tb/dut/ff_tx_a_full} [find signals /tb/dut/ff_tx_a_full]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/ff_tx_a_full}
 if [regexp {/tb/dut/ff_tx_a_empty} [find signals /tb/dut/ff_tx_a_empty]]          {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/ff_tx_a_empty}
 
+
+add wave -noupdate -divider -height 40 {ALL WIRE}
 add wave -r *
+
+
 
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {0 ps} 0}

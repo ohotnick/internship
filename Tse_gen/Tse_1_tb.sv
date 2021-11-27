@@ -65,13 +65,22 @@ logic     reg_wakeup;                     //  Wake Up Request
 logic  reset;
 
 logic  [31:0]readdata_gen_tse;
-logic  readdatavalid_gen_tse;
 logic  waitrequest_gen_tse;
 
 logic  [7:0]address_gen_tse;
 logic  write_gen_tse;
 logic  [31:0]writedata_gen_tse;
 logic  read_gen_tse;
+
+//Avalon-MM slave
+   logic [8:0]address_AvMM_S_i;
+   logic write_AvMM_S_i;
+   logic [31:0]writedata_AvMM_S_i;
+   logic read_AvMM_S_i;
+
+   logic [31:0]readdata_AvMM_S_o;
+   logic readdatavalid_AvMM_S_o;
+   logic waitrequest_AvMM_S_o;
 
 //  Clocks
 //  ------
@@ -102,26 +111,115 @@ initial
     reg_rd      <= 0;
 	reg_wr      <= 0;
 	reg_data_in <= 32'h2008;
-	
+	/*
 	#( 50 )
 	  reg_wr   <= 1'h 1;
 	  reg_addr <= 8'h 2;
 	@( negedge waitrequest_gen_tse )
 	 begin
 	  reg_wr   <= 1'h 0;
-	  
-	//#( 50 )
+	*/  
+	#( 50 )
 	  reg_rd   <= 1'h 1;
 	  reg_addr <= 8'h 2;
-	  end
+	  //end
 	@( negedge waitrequest_gen_tse )
 	  reg_rd   <= 1'h 0;
 	  
 	  
   end
   
- 
+  
+  
+task send_MM ( logic [31:0]data_send_MM, logic [8:0]address_MM );
 
+  @(posedge reg_clk)
+    begin
+      address_AvMM_S_i   = address_MM;
+      writedata_AvMM_S_i = data_send_MM;
+      write_AvMM_S_i     = 1;
+    end
+	
+  @(posedge reg_clk)
+  write_AvMM_S_i         = 0;
+  
+  $display( "Send data_MM[%d] = %h, %d ns ", address_MM , data_send_MM,$time  );
+  
+endtask
+
+task read_MM ( logic [31:0]data_read_MM, logic [8:0]address_MM );
+
+  @(posedge reg_clk)
+    begin
+      address_AvMM_S_i   = address_MM;
+      read_AvMM_S_i      = 1;
+    end
+	
+  @(posedge reg_clk)
+  read_AvMM_S_i          = 0;
+  
+  forever
+    begin
+	  @(posedge reg_clk)
+      if ( readdatavalid_AvMM_S_o == 1 )
+        begin
+		  data_read_MM = readdata_AvMM_S_o;
+		  break;
+	    end
+	end
+  
+  $display( "Read data_MM[%d] = %h,  %d ns ", address_MM , data_read_MM ,$time  );
+  
+endtask
+  
+  
+initial
+  begin
+    
+	logic [31:0]data_send_MM;
+	logic [8:0]address_MM;
+	
+	logic [31:0]data_read_MM;
+	logic [8:0]address_MM_read;
+	
+	data_send_MM = 32'h 1000001;
+	address_MM   = 0;
+	
+	//$monitor( "Status Init TSE: 1)Read:%b  %d ns",readdata_gen_tse, $time);
+	#50;
+	address_MM_read = 0;
+	read_MM (data_read_MM, address_MM_read);
+	#100;
+	
+    send_MM (data_send_MM, address_MM);
+	
+	#100;
+	read_MM (data_read_MM, address_MM_read);
+  
+  end
+
+logic tb_flag_init_TSE;
+ 
+initial
+  begin
+  
+    tb_flag_init_TSE = 0;
+	
+    forever
+      begin
+	    @(posedge reg_clk)
+		if (( writedata_gen_tse == 32'h2008 ) & (tb_flag_init_TSE == 0 ))
+		  begin
+		    $display( "Start init TSE,  %d ns ",$time  );
+			tb_flag_init_TSE = 1;
+		  end
+        else if ( readdata_gen_tse == 32'b1011 )
+          begin
+		    $display( "Success init TSE,  %d ns ",$time  );
+		    break;
+	      end
+	  end
+  end
  
 // $<RTL_CORE_INSTANCE>
 Tse_1 dut
@@ -189,18 +287,17 @@ gen_pack_TSE dut_gen (
 	.srst_i                 (reset),
 
 //Avalon-MM Slave. Init gen
-    .gen_address_AvMM_S_i       (),
-    .gen_write_AvMM_S_i         ( ),
-    .gen_writedata_AvMM_S_i     ( ),
-    .gen_read_AvMM_S_i          ( ),
+    .gen_address_AvMM_S_i       ( address_AvMM_S_i ),
+    .gen_write_AvMM_S_i         ( write_AvMM_S_i ),
+    .gen_writedata_AvMM_S_i     ( writedata_AvMM_S_i ),
+    .gen_read_AvMM_S_i          ( read_AvMM_S_i ),
 
-    .gen_readdata_AvMM_S_o      ( ),
-    .gen_readdatavalid_AvMM_S_o ( ),
-    .gen_waitrequest_AvMM_S_o   ( ),
+    .gen_readdata_AvMM_S_o      ( readdata_AvMM_S_o ),
+    .gen_readdatavalid_AvMM_S_o ( readdatavalid_AvMM_S_o ),
+    .gen_waitrequest_AvMM_S_o   ( waitrequest_AvMM_S_o ),
 
 //Avalon-MM Master. Init TSE
     .gen_readdata_AvMM_M_i      (readdata_gen_tse),
-    .gen_readdatavalid_AvMM_M_i (readdatavalid_gen_tse),
     .gen_waitrequest_AvMM_M_i   (waitrequest_gen_tse),
 
     .gen_address_AvMM_M_o       (address_gen_tse),

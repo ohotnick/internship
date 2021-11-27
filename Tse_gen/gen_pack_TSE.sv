@@ -14,7 +14,6 @@ output gen_waitrequest_AvMM_S_o,
 
 //Avalon-MM Master. Init TSE
 input [31:0]gen_readdata_AvMM_M_i,
-input gen_readdatavalid_AvMM_M_i,
 input gen_waitrequest_AvMM_M_i,
 
 output [7:0]gen_address_AvMM_M_o,
@@ -75,8 +74,9 @@ logic flag_init_TSE;
 logic flagMM_1;
 logic flagMM_2;
 logic flagMM_3;
-logic flagMM_4;
-logic flagMM_5;
+logic [31:0]flagTest_ram;
+
+logic flag_start_TSE;
 
 //Avalon-MM Master
 always_ff @( posedge clk_i )
@@ -92,19 +92,24 @@ always_ff @( posedge clk_i )
 		flagMM_1      <= 0;
 		flagMM_2      <= 0;
 		flagMM_3      <= 0;
-		flagMM_4      <= 0;
-		flagMM_5      <= 0;
+
       end
     else
       begin
 
-		if( flag_init_TSE <= 0 )
+        if( flag_start_TSE == 1 )
+		  flag_init_TSE <= 1;
+
+		if( flag_init_TSE == 1 )                         //SW_RESET and Itit TSE reg
 		  begin
 		    if( flagMM_1 == 0 )                          //stop Tx/Rx, Reset
 		      begin
 			    gen_address_AvMM_M_o_tv   <= 8'h2;
 				gen_writedata_AvMM_M_o_tv <= 32'h2008;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 				gen_write_AvMM_M_o_tv     <= 1;
+				
+				bank_reg[0][24] <= 0;
+				
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
 				    flagMM_1 <= 1;
@@ -119,64 +124,81 @@ always_ff @( posedge clk_i )
 				gen_read_AvMM_M_o_tv      <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
-				    flagMM_2 <= 1;
-					gen_read_AvMM_M_o_tv      <= 0;
+					gen_read_AvMM_M_o_tv  <= 0;
+					if( gen_readdata_AvMM_M_i == 32'h2008 )
+                      flagMM_2   <= 1;
+				    else
+				      begin
+				    	flagMM_1 <= 0;
+		                flagMM_2 <= 0;
+				      end
 				  end
 			  end
-			else if( flagMM_3 == 0 )
-			  begin
-			    gen_read_AvMM_M_o_tv      <= 0;
-				
-				if( gen_readdatavalid_AvMM_M_i == 1 )
-				  if( gen_readdata_AvMM_M_i == 32'h2008 )
-                    flagMM_3   <= 1;
-				  else
-				    begin
-					  flagMM_1 <= 0;
-		              flagMM_2 <= 0;
-					end
-			  end
-			else if( flagMM_4 == 0 )                     //start
+			else if( flagMM_3 == 0 )                     //start
 			  begin
 			    gen_address_AvMM_M_o_tv   <= 8'h2;
 				gen_writedata_AvMM_M_o_tv <= 32'b1011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1
 				gen_write_AvMM_M_o_tv     <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
-				  flagMM_4 <= 1;
+				  begin
+				    flagMM_3 <= 1;
+				    gen_write_AvMM_M_o_tv <= 0;
+					end
 			  end
-			else if( flagMM_5 == 0 )                     //Read check
+			else                     //Read check
 			  begin
 			    gen_write_AvMM_M_o_tv     <= 0;
 				
 				gen_address_AvMM_M_o_tv   <= 8'h2;
 				gen_read_AvMM_M_o_tv      <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
-				  flagMM_5 <= 1;
+				  begin
+					gen_read_AvMM_M_o_tv  <= 0;
+					
+					if( gen_readdata_AvMM_M_i == 32'b1011 )
+				      begin
+					    flag_init_TSE <= 0;
+					    flagMM_1      <= 0;
+		                flagMM_2      <= 0;
+		                flagMM_3      <= 0;
+				      end
+				    else
+				      begin
+					    flagMM_3 <= 0;
+				      end
+					
+				  end
 			  end
-			else
-			  begin
-			    gen_read_AvMM_M_o_tv      <= 0;
-				
-				if( gen_readdatavalid_AvMM_M_i == 1 )
-				  if( gen_readdata_AvMM_M_i == 32'b1011 )
-				    begin
-					  flag_init_TSE <= 1;
-					  flagMM_1      <= 0;
-		              flagMM_2      <= 0;
-		              flagMM_3      <= 0;
-		              flagMM_4      <= 0;
-		              flagMM_5      <= 0;
-					end
-				  else
-				    begin
-					  flagMM_4 <= 0;
-		              flagMM_5 <= 0;
-					end
-			  end
+
 		  end    //end flag_init_TSE	
           
       end
   end
+  
+  
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      begin
+        flag_start_TSE <= 0;
+		//bank_reg[0] <= 32'h 1000000;
+		bank_reg[0]    <= 0;
+		flagTest_ram   <= 0;
+      end
+    else
+      begin
+        
+		if ( bank_reg[0][24] == 1 )
+          flag_start_TSE <= 1;
+		if ( bank_reg[0][24] == 0 )
+          flag_start_TSE <= 0;
+		  
+		flagTest_ram <= bank_reg[0];
+          
+      end
+  end
+   
+  
 
   
 assign gen_readdata_AvMM_S_o      = gen_readdata_AvMM_S_o_tv;
