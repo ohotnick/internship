@@ -155,17 +155,19 @@ task read_MM ( logic [31:0]data_read_MM, logic [8:0]address_MM );
       read_AvMM_S_i      = 1;
     end
 	
-  @(posedge reg_clk)
-  read_AvMM_S_i          = 0;
-  
   forever
     begin
 	  @(posedge reg_clk)
-      if ( readdatavalid_AvMM_S_o == 1 )
-        begin
-		  data_read_MM = readdata_AvMM_S_o;
-		  break;
-	    end
+	    begin
+		  if( waitrequest_AvMM_S_o == 0 )
+            read_AvMM_S_i          = 0;
+		
+          if ( readdatavalid_AvMM_S_o == 1 )
+            begin
+		      data_read_MM = readdata_AvMM_S_o;
+		      break;
+	        end
+		end
 	end
   
   $display( "Read data_MM[%d] = %h,  %d ns ", address_MM , data_read_MM ,$time  );
@@ -182,19 +184,49 @@ initial
 	logic [31:0]data_read_MM;
 	logic [8:0]address_MM_read;
 	
-	data_send_MM = 32'h 1000001;
+	logic [31:0]data_to_check;
+	logic [31:0]data_take;
+	
+	//data_send_MM = 32'h 1000001;
+	data_send_MM = 32'h 400000;
 	address_MM   = 0;
 	
 	//$monitor( "Status Init TSE: 1)Read:%b  %d ns",readdata_gen_tse, $time);
 	#50;
-	address_MM_read = 0;
-	read_MM (data_read_MM, address_MM_read);
+	address_MM_read = 1;
+	read_MM (data_read_MM, address_MM_read);      //read data_word 0x01 status reg
 	#100;
 	
-    send_MM (data_send_MM, address_MM);
+    send_MM (data_send_MM, address_MM);           //send comand [22]-read data, from address [21..14]=0
 	
 	#100;
-	read_MM (data_read_MM, address_MM_read);
+	read_MM (data_read_MM, address_MM_read);      //read data_word 0x01 status reg. It equal to 0x00 TSE
+	
+	//write
+	$display( "Avalon-MM staart check  %d ns ",$time  );
+	data_to_check = 32'h 5;
+	data_send_MM = data_to_check;
+	address_MM   = 1;
+	send_MM (data_send_MM, address_MM);           //send data_word 0x01 status reg = 1
+	data_send_MM = 32'h 804000;
+	address_MM   = 0;
+	send_MM (data_send_MM, address_MM);           //send comand [23]-write data, from address [21..14]=1
+    data_send_MM = 32'h 3;
+	address_MM   = 1;
+	if(waitrequest_gen_tse == 0)
+	  send_MM (data_send_MM, address_MM);           //send data_word 0x01 status reg = 3
+	data_send_MM = 32'h 404000;
+	address_MM   = 0;
+	send_MM (data_send_MM, address_MM);            //send comand [22]-read data, from address [21..14]=1
+	#50;
+	address_MM_read = 1;
+	read_MM (data_read_MM, address_MM_read);       //read data_word 0x01 status reg
+	data_take = readdata_AvMM_S_o;
+    if( data_take == data_to_check )
+	  $display( "Avalon-MM check good  %d ns ",$time  );
+	else
+      $display( "Avalon-MM dont check data_take = %d,  %d ns ",data_take ,$time  );
+
   
   end
 

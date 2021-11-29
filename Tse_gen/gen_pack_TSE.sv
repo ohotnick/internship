@@ -71,12 +71,16 @@ logic [31:0]gen_writedata_AvMM_M_o_tv;
 logic gen_read_AvMM_M_o_tv;
 
 logic flag_init_TSE;
+logic flag_read_TSE;
+logic flag_write_TSE;
 logic flagMM_1;
 logic flagMM_2;
 logic flagMM_3;
 logic [31:0]flagTest_ram;
 
 logic flag_start_TSE;
+logic flag_start_read_TSE;
+logic flag_start_write_TSE;
 
 //Avalon-MM Master
 always_ff @( posedge clk_i )
@@ -88,10 +92,12 @@ always_ff @( posedge clk_i )
         gen_writedata_AvMM_M_o_tv <= 0;
         gen_read_AvMM_M_o_tv      <= 0;
 		
-		flag_init_TSE <= 0;
-		flagMM_1      <= 0;
-		flagMM_2      <= 0;
-		flagMM_3      <= 0;
+		flag_init_TSE  <= 0;
+		flag_read_TSE  <= 0;
+		flag_write_TSE <= 0;
+		flagMM_1       <= 0;
+		flagMM_2       <= 0;
+		flagMM_3       <= 0;
 
       end
     else
@@ -99,6 +105,10 @@ always_ff @( posedge clk_i )
 
         if( flag_start_TSE == 1 )
 		  flag_init_TSE <= 1;
+		else if( (flag_start_read_TSE == 1 ) & ( flag_write_TSE == 0 ))
+		  flag_read_TSE <= 1;
+		else if( flag_start_write_TSE == 1 )
+		  flag_write_TSE <= 1;
 
 		if( flag_init_TSE == 1 )                         //SW_RESET and Itit TSE reg
 		  begin
@@ -171,7 +181,36 @@ always_ff @( posedge clk_i )
 			  end
 
 		  end    //end flag_init_TSE	
-          
+		  
+        else if( flag_read_TSE == 1 )
+		  begin
+		    gen_address_AvMM_M_o_tv     <= bank_reg[0][21:14];
+		    gen_read_AvMM_M_o_tv        <= 1;
+			gen_waitrequest_AvMM_S_o_tv <= 1;
+			bank_reg[0][22]             <= 0;
+			if( gen_waitrequest_AvMM_M_i == 0 )
+			  begin
+			    gen_waitrequest_AvMM_S_o_tv <= 0;
+				gen_read_AvMM_M_o_tv        <= 0;
+				bank_reg[1]                 <= gen_readdata_AvMM_M_i;
+				flag_read_TSE               <= 0;
+			  end
+		  end     // end read
+		else if( flag_write_TSE == 1 )
+		  begin
+		    gen_address_AvMM_M_o_tv     <= bank_reg[0][21:14];
+			gen_writedata_AvMM_M_o_tv   <= bank_reg[1];
+			gen_write_AvMM_M_o_tv       <= 1;
+			gen_waitrequest_AvMM_S_o_tv <= 1;
+			bank_reg[0][23]             <= 0;
+			if( gen_waitrequest_AvMM_M_i == 0 )
+			  begin
+			    gen_waitrequest_AvMM_S_o_tv <= 0;
+			    flag_write_TSE              <= 0;
+			    gen_write_AvMM_M_o_tv       <= 0;
+			  end
+		  end
+		  
       end
   end
   
@@ -180,10 +219,13 @@ always_ff @( posedge clk_i )
   begin
     if(srst_i)
       begin
-        flag_start_TSE <= 0;
-		//bank_reg[0] <= 32'h 1000000;
-		bank_reg[0]    <= 0;
-		flagTest_ram   <= 0;
+        flag_start_TSE       <= 0;
+        flag_start_read_TSE  <= 0;
+		flag_start_write_TSE <= 0;
+		bank_reg[0]          <= 0;
+		bank_reg[1]          <= 0;
+		
+		flagTest_ram         <= 0;
       end
     else
       begin
@@ -192,8 +234,22 @@ always_ff @( posedge clk_i )
           flag_start_TSE <= 1;
 		if ( bank_reg[0][24] == 0 )
           flag_start_TSE <= 0;
+		
+		if ( bank_reg[0][22] == 0 )
+              flag_start_read_TSE <= 0;
+		if ( bank_reg[0][23] == 0 )
+              flag_start_write_TSE <= 0;
+		
+       // if(	gen_waitrequest_AvMM_S_o_tv == 0 )
+        //  begin		
+		    if ( bank_reg[0][22] == 1 )
+              flag_start_read_TSE <= 1;
+		    
+		    if ( bank_reg[0][23] == 1 )
+              flag_start_write_TSE <= 1;  
+		//  end
 		  
-		flagTest_ram <= bank_reg[0];
+		flagTest_ram <= bank_reg[1];
           
       end
   end
