@@ -72,6 +72,11 @@ logic  write_gen_tse;
 logic  [31:0]writedata_gen_tse;
 logic  read_gen_tse;
 
+//GMII
+logic gm_tx_rx_en_0;
+logic gm_tx_rx_err_0;
+logic [7:0]gm_tx_rx_d_0;
+
 //Avalon-MM slave
    logic [8:0]address_AvMM_S_i;
    logic write_AvMM_S_i;
@@ -96,6 +101,16 @@ always
    #( 10 ); 
    reg_clk <= 1'b 0;    
    #( 10 ); 
+   end
+
+logic tx_clk;
+   
+always 
+   begin
+   tx_clk <= 1'b 1;    
+   #( 5 ); 
+   tx_clk <= 1'b 0;    
+   #( 5 ); 
    end
 		
 initial
@@ -139,9 +154,20 @@ task send_MM ( logic [31:0]data_send_MM, logic [8:0]address_MM );
       writedata_AvMM_S_i = data_send_MM;
       write_AvMM_S_i     = 1;
     end
+
+  forever
+    begin
+	  @(posedge reg_clk);
+      if( waitrequest_AvMM_S_o == 0 )
+	    begin
+		  write_AvMM_S_i         = 0;
+		  break;
+		end
+      
+      
+	end
 	
-  @(posedge reg_clk)
-  write_AvMM_S_i         = 0;
+	
   
   $display( "Send data_MM[%d] = %h, %d ns ", address_MM , data_send_MM,$time  );
   
@@ -172,6 +198,35 @@ task read_MM ( logic [31:0]data_read_MM, logic [8:0]address_MM );
   
   $display( "Read data_MM[%d] = %h,  %d ns ", address_MM , data_read_MM ,$time  );
   
+endtask
+
+logic [7:0] data_aval;
+logic sop_aval;
+logic valid_aval;
+logic ready_aval;
+
+task Avalon_gen_test();
+  
+  @(posedge tx_clk)
+    begin
+      data_aval   = 3;
+      sop_aval    = 1;
+	  valid_aval  = 1;
+    end
+	
+	forever
+    begin
+	  @(posedge tx_clk)
+	    begin
+		  data_aval = data_aval + 1;
+		  if( ready_aval == 1 )
+		    begin
+			  sop_aval <= 0;
+		      //break;
+			end;
+		end
+	end
+
 endtask
   
   
@@ -226,6 +281,12 @@ initial
 	  $display( "Avalon-MM check good  %d ns ",$time  );
 	else
       $display( "Avalon-MM dont check data_take = %d,  %d ns ",data_take ,$time  );
+	
+    data_send_MM = 32'h 1000001;
+	address_MM   = 0;	
+	send_MM (data_send_MM, address_MM);
+	  
+	//Avalon_gen_test;
 
   
   end
@@ -245,10 +306,12 @@ initial
 		    $display( "Start init TSE,  %d ns ",$time  );
 			tb_flag_init_TSE = 1;
 		  end
-        else if ( readdata_gen_tse == 32'b1011 )
+        else if ( readdata_gen_tse == 32'b111011 )
           begin
 		    $display( "Success init TSE,  %d ns ",$time  );
+			Avalon_gen_test;
 		    break;
+			
 	      end
 	  end
   end
@@ -256,18 +319,18 @@ initial
 // $<RTL_CORE_INSTANCE>
 Tse_1 dut
 (
-   .gm_tx_en_0        ( ),
-   .gm_rx_err_0       ( ),
-   .gm_tx_err_0       ( ),
-   .gm_rx_dv_0        ( ),
-   .gm_tx_d_0         ( ),
-   .gm_rx_d_0         ( ),
+   .gm_tx_en_0        ( gm_tx_rx_en_0 ),
+   .gm_rx_err_0       ( gm_tx_rx_err_0 ),
+   .gm_tx_err_0       ( gm_tx_rx_err_0 ),
+   .gm_rx_dv_0        ( gm_tx_rx_en_0 ),
+   .gm_tx_d_0         ( gm_tx_rx_d_0 ),
+   .gm_rx_d_0         ( gm_tx_rx_d_0 ),
    .clk               (reg_clk),
    .mac_rx_clk_0      ( ),
    .rx_afull_valid    ( ),
    .rx_afull_data     ( ),
    .rx_afull_channel  ( ),
-   .tx_clk_0          ( ),
+   .tx_clk_0          ( tx_clk ),
    .magic_wakeup_0    ( ),
    .xoff_gen_0        ( ),
    .tx_crc_fwd_0      ( ),
@@ -278,16 +341,16 @@ Tse_1 dut
    .data_rx_valid_0   ( ),
    .data_rx_error_0   ( ),
    .data_rx_sop_0     ( ),
-   .data_rx_ready_0   ( ),
+   .data_rx_ready_0   ( 1 ),
    .pkt_class_valid_0 ( ),
    .pkt_class_data_0  ( ),
-   .rx_clk_0          ( ),
-   .data_tx_error_0   ( ),
-   .data_tx_valid_0   ( ),
-   .data_tx_data_0    ( ),
-   .data_tx_ready_0   ( ),
-   .data_tx_sop_0     ( ),
-   .data_tx_eop_0     ( ),
+   .rx_clk_0          ( tx_clk ),
+   .data_tx_error_0   ( 0 ),
+   .data_tx_valid_0   ( valid_aval ),
+   .data_tx_data_0    ( data_aval ),
+   .data_tx_ready_0   ( ready_aval ),
+   .data_tx_sop_0     ( sop_aval ),
+   .data_tx_eop_0     ( 0 ),
    .waitrequest       (waitrequest_gen_tse),
    .address           (address_gen_tse),
 //      .address           (reg_addr),                        	//test
@@ -298,7 +361,7 @@ Tse_1 dut
    .read              (read_gen_tse),
 //      .read              (reg_rd),							//test
    .readdata          (readdata_gen_tse),
-   .mac_tx_clk_0      ( ),
+   .mac_tx_clk_0      ( ),  //multiply driven
    .m_rx_err_0        ( ),
    .m_rx_en_0         ( ),
    .m_tx_err_0        ( ),
@@ -310,7 +373,7 @@ Tse_1 dut
    .ena_10_0          ( ),
    .set_1000_0        ( ),
    .reset             (reset),
-   .rx_afull_clk      ( )
+   .rx_afull_clk      (tx_clk)  //not tx
 );
 
 gen_pack_TSE dut_gen (

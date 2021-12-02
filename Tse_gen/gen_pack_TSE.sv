@@ -20,6 +20,17 @@ output [7:0]gen_address_AvMM_M_o,
 output gen_write_AvMM_M_o,
 output [31:0]gen_writedata_AvMM_M_o,
 output gen_read_AvMM_M_o
+/*
+//Avalon-ST Source
+input ast_ready_i,
+
+output [7:0]ast_data_o,
+output ast_valid_o,
+output ast_startofpacket_o,
+output ast_endofpacket_o,
+output ast_empty_o,
+output ast_channel_o
+*/
 
 );
 
@@ -147,7 +158,7 @@ always_ff @( posedge clk_i )
 			else if( flagMM_3 == 0 )                     //start
 			  begin
 			    gen_address_AvMM_M_o_tv   <= 8'h2;
-				gen_writedata_AvMM_M_o_tv <= 32'b1011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1
+				gen_writedata_AvMM_M_o_tv <= 32'b111011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1 4)PROMIS_EN=1 5)PAD_EN
 				gen_write_AvMM_M_o_tv     <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
@@ -165,7 +176,7 @@ always_ff @( posedge clk_i )
 				  begin
 					gen_read_AvMM_M_o_tv  <= 0;
 					
-					if( gen_readdata_AvMM_M_i == 32'b1011 )
+					if( gen_readdata_AvMM_M_i == 32'b111011 )
 				      begin
 					    flag_init_TSE <= 0;
 					    flagMM_1      <= 0;
