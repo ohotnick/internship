@@ -72,6 +72,13 @@ logic  write_gen_tse;
 logic  [31:0]writedata_gen_tse;
 logic  read_gen_tse;
 
+//Avalon-ST
+logic [7:0] data_aval;
+logic sop_aval;
+logic eop_aval;
+logic valid_aval;
+logic ready_aval;
+
 //GMII
 logic gm_tx_rx_en_0;
 logic gm_tx_rx_err_0;
@@ -86,6 +93,10 @@ logic [7:0]gm_tx_rx_d_0;
    logic [31:0]readdata_AvMM_S_o;
    logic readdatavalid_AvMM_S_o;
    logic waitrequest_AvMM_S_o;
+   
+ logic [4:0]data_rx_error_0;
+ logic data_rx_valid_0;
+ logic data_rx_eop_0;
 
 //  Clocks
 //  ------
@@ -200,11 +211,8 @@ task read_MM ( logic [31:0]data_read_MM, logic [8:0]address_MM );
   
 endtask
 
-logic [7:0] data_aval;
-logic sop_aval;
-logic valid_aval;
-logic ready_aval;
 
+/*
 task Avalon_gen_test();
   
   @(posedge tx_clk)
@@ -228,7 +236,102 @@ task Avalon_gen_test();
 	end
 
 endtask
+*/
+task Init_frame();
+
+  logic [31:0]data_ram_frame;
+  logic [8:0]address_ram_frame;
   
+  address_ram_frame  = 5;
+  data_ram_frame     = 32'h85300000;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 6;
+  data_ram_frame     = 32'h49b610a9;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 7;
+  data_ram_frame     = 32'ha4a60454;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 8;
+  data_ram_frame     = 32'h0008a3c4;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 9;
+  data_ram_frame     = 32'hc3000045;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 10;
+  data_ram_frame     = 32'h00004785;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 11;
+  data_ram_frame     = 32'h00000180;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 12;
+  data_ram_frame     = 32'h1902010a;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 13;
+  data_ram_frame     = 32'h4502010a;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 14;
+  data_ram_frame     = 32'h564d0008;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 15;
+  data_ram_frame     = 32'h05000100;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 16;
+  data_ram_frame     = 32'h64636261;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 17;
+  data_ram_frame     = 32'h68676665;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 18;
+  data_ram_frame     = 32'h6c6b6a69;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 19;
+  data_ram_frame     = 32'h706f6e6d;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 20;
+  data_ram_frame     = 32'h74737271;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 21;
+  data_ram_frame     = 32'h61777675;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 22;
+  data_ram_frame     = 32'h65646362;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 23;
+  data_ram_frame     = 32'h69686766;
+  send_MM (data_ram_frame, address_ram_frame);
+  /*
+  address_ram_frame  = 5;
+  data_ram_frame     = 32'h04030201;
+  while( address_ram_frame <= 384 )
+    begin
+      send_MM (data_ram_frame, address_ram_frame);
+	  data_ram_frame    = data_ram_frame + 32'h01010101;
+	  address_ram_frame = address_ram_frame + 1;
+    end
+	*/
+  $display( "Success init frame,  %d ns ",$time  );
+
+endtask
+  
+logic flag_end_init_ram;
   
 initial
   begin
@@ -257,6 +360,17 @@ initial
 	#100;
 	read_MM (data_read_MM, address_MM_read);      //read data_word 0x01 status reg. It equal to 0x00 TSE
 	
+	//data_send_MM = 32'h60000;
+	data_send_MM = 32'h40000;
+	address_MM   = 1;	
+	send_MM (data_send_MM, address_MM);
+	
+	data_send_MM = 32'h 8e8000;
+	address_MM   = 0;	
+	send_MM (data_send_MM, address_MM);
+	
+	#100
+	
 	//write
 	$display( "Avalon-MM staart check  %d ns ",$time  );
 	data_to_check = 32'h 5;
@@ -282,11 +396,36 @@ initial
 	else
       $display( "Avalon-MM dont check data_take = %d,  %d ns ",data_take ,$time  );
 	
-    data_send_MM = 32'h 1000001;
+    data_send_MM = 32'h 1000000;
 	address_MM   = 0;	
 	send_MM (data_send_MM, address_MM);
-	  
-	//Avalon_gen_test;
+	
+	$display( " before. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
+	forever
+	  @(posedge tx_clk)
+	    if( flag_end_init_ram == 1 )
+	      begin
+		    data_send_MM = 32'h 0000001;
+	        address_MM   = 0;	
+	        send_MM (data_send_MM, address_MM);
+		    $display( " after. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
+			break;
+		  end
+		  
+	forever
+	  @(posedge tx_clk)
+	    //if(( data_rx_error_0 == 2 ) & ( data_rx_valid_0 == 1 ) & ( data_rx_eop_0 == 1 ))
+		if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
+	      begin
+		    //data_send_MM = 32'h4e8000;
+			data_send_MM = 32'h1;
+	        address_MM   = 0;	
+	        send_MM (data_send_MM, address_MM);
+		    $display( " Send frame again,  %d ns ",$time  );
+			break;
+		  end
+	
+	//Init_frame();
 
   
   end
@@ -296,7 +435,8 @@ logic tb_flag_init_TSE;
 initial
   begin
   
-    tb_flag_init_TSE = 0;
+    flag_end_init_ram = 0;  
+    tb_flag_init_TSE  = 0;
 	
     forever
       begin
@@ -306,15 +446,19 @@ initial
 		    $display( "Start init TSE,  %d ns ",$time  );
 			tb_flag_init_TSE = 1;
 		  end
-        else if ( readdata_gen_tse == 32'b111011 )
+        else if ( readdata_gen_tse == 32'h900001b )
           begin
 		    $display( "Success init TSE,  %d ns ",$time  );
-			Avalon_gen_test;
+			Init_frame();
+			//Avalon_gen_test;
+			flag_end_init_ram = 1;
+			$display( "End init Gen ram, flag_end_init_ram = %d,  %d ns ",flag_end_init_ram,$time  );
 		    break;
 			
 	      end
 	  end
   end
+ 
  
 // $<RTL_CORE_INSTANCE>
 Tse_1 dut
@@ -333,13 +477,13 @@ Tse_1 dut
    .tx_clk_0          ( tx_clk ),
    .magic_wakeup_0    ( ),
    .xoff_gen_0        ( ),
-   .tx_crc_fwd_0      ( ),
+   .tx_crc_fwd_0      ( 0 ),
    .magic_sleep_n_0   ( ),
    .xon_gen_0         ( ),
-   .data_rx_eop_0     ( ),
+   .data_rx_eop_0     ( data_rx_eop_0 ),
    .data_rx_data_0    ( ),
-   .data_rx_valid_0   ( ),
-   .data_rx_error_0   ( ),
+   .data_rx_valid_0   ( data_rx_valid_0 ),
+   .data_rx_error_0   ( data_rx_error_0 ),
    .data_rx_sop_0     ( ),
    .data_rx_ready_0   ( 1 ),
    .pkt_class_valid_0 ( ),
@@ -350,7 +494,7 @@ Tse_1 dut
    .data_tx_data_0    ( data_aval ),
    .data_tx_ready_0   ( ready_aval ),
    .data_tx_sop_0     ( sop_aval ),
-   .data_tx_eop_0     ( 0 ),
+   .data_tx_eop_0     ( eop_aval ),
    .waitrequest       (waitrequest_gen_tse),
    .address           (address_gen_tse),
 //      .address           (reg_addr),                        	//test
@@ -373,12 +517,13 @@ Tse_1 dut
    .ena_10_0          ( ),
    .set_1000_0        ( ),
    .reset             (reset),
-   .rx_afull_clk      (tx_clk)  //not tx
+   .rx_afull_clk      (reg_clk)  //not tx
 );
 
 gen_pack_TSE dut_gen (
 
     .clk_i                  (reg_clk),
+	.clk_tx_i               (tx_clk),
 	.srst_i                 (reset),
 
 //Avalon-MM Slave. Init gen
@@ -398,7 +543,15 @@ gen_pack_TSE dut_gen (
     .gen_address_AvMM_M_o       (address_gen_tse),
     .gen_write_AvMM_M_o         (write_gen_tse),
     .gen_writedata_AvMM_M_o     (writedata_gen_tse),
-    .gen_read_AvMM_M_o          (read_gen_tse)
+    .gen_read_AvMM_M_o          (read_gen_tse),
+	
+//Avalon-ST Source
+    .gen_ready_i                 ( ready_aval ),
+
+    .gen_data_o                  ( data_aval ),
+    .gen_valid_o                 ( valid_aval ),
+    .gen_startofpacket_o         ( sop_aval ),
+    .gen_endofpacket_o           ( eop_aval )
 
 );
 

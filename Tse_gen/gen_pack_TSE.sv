@@ -1,5 +1,6 @@
 module gen_pack_TSE (
 input clk_i,
+input clk_tx_i,
 input srst_i,
 
 //Avalon-MM Slave. Init gen
@@ -19,18 +20,15 @@ input gen_waitrequest_AvMM_M_i,
 output [7:0]gen_address_AvMM_M_o,
 output gen_write_AvMM_M_o,
 output [31:0]gen_writedata_AvMM_M_o,
-output gen_read_AvMM_M_o
-/*
-//Avalon-ST Source
-input ast_ready_i,
+output gen_read_AvMM_M_o,
 
-output [7:0]ast_data_o,
-output ast_valid_o,
-output ast_startofpacket_o,
-output ast_endofpacket_o,
-output ast_empty_o,
-output ast_channel_o
-*/
+//Avalon-ST Source
+input  gen_ready_i,
+
+output [7:0]gen_data_o,
+output gen_valid_o,
+output gen_startofpacket_o,
+output gen_endofpacket_o
 
 );
 
@@ -158,7 +156,8 @@ always_ff @( posedge clk_i )
 			else if( flagMM_3 == 0 )                     //start
 			  begin
 			    gen_address_AvMM_M_o_tv   <= 8'h2;
-				gen_writedata_AvMM_M_o_tv <= 32'b111011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1 4)PROMIS_EN=1 5)PAD_EN
+				//gen_writedata_AvMM_M_o_tv <= 32'b100111011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1 4)PROMIS_EN=1 5)PAD_EN = 1 8)PAUSE_IGNORE = 1
+				gen_writedata_AvMM_M_o_tv <= 32'h900001b;   //0,1,3,4,24,27
 				gen_write_AvMM_M_o_tv     <= 1;
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
@@ -176,7 +175,7 @@ always_ff @( posedge clk_i )
 				  begin
 					gen_read_AvMM_M_o_tv  <= 0;
 					
-					if( gen_readdata_AvMM_M_i == 32'b111011 )
+					if( gen_readdata_AvMM_M_i == 32'h900001b )
 				      begin
 					    flag_init_TSE <= 0;
 					    flagMM_1      <= 0;
@@ -250,22 +249,111 @@ always_ff @( posedge clk_i )
               flag_start_read_TSE <= 0;
 		if ( bank_reg[0][23] == 0 )
               flag_start_write_TSE <= 0;
-		
-       // if(	gen_waitrequest_AvMM_S_o_tv == 0 )
-        //  begin		
-		    if ( bank_reg[0][22] == 1 )
-              flag_start_read_TSE <= 1;
+			
+		if ( bank_reg[0][22] == 1 )
+          flag_start_read_TSE <= 1;
 		    
-		    if ( bank_reg[0][23] == 1 )
-              flag_start_write_TSE <= 1;  
-		//  end
+		if ( bank_reg[0][23] == 1 )
+          flag_start_write_TSE <= 1;  
 		  
-		flagTest_ram <= bank_reg[1];
+		flagTest_ram <= bank_reg[0];
           
       end
   end
+
+//Avalon-ST Source
+logic [7:0]gen_data_o_tv;
+logic gen_valid_o_tv;
+logic gen_startofpacket_o_tv;
+logic gen_endofpacket_o_tv;
+
+logic flag_start_TX;
+logic flag_SOP;
+logic [1:0]count_32to8;
+logic [10:0]size_tv;
+logic [10:0]count_end_tx;
    
-  
+//Avalon-ST Source
+always_ff @( posedge clk_tx_i )
+  begin
+    if(srst_i)
+      begin
+        gen_data_o_tv          <= 0;
+		gen_valid_o_tv         <= 0;
+		gen_startofpacket_o_tv <= 0;
+		gen_endofpacket_o_tv   <= 0;
+		
+		count_32to8   <= 0;
+		flag_start_TX <= 0;
+		size_tv       <= 5;
+		count_end_tx  <= 0;
+		flag_SOP      <= 0;
+      end
+    else
+      begin
+	    if( flag_start_TX == 1 )
+		  begin
+            
+			if( flag_SOP == 0 )
+			  begin
+			    gen_startofpacket_o_tv <= 1;
+				gen_valid_o_tv         <= 1;
+				flag_SOP               <= 1;
+				gen_data_o_tv          <= bank_reg[5][7:0];
+				
+				count_32to8 <= count_32to8 + 1;
+			      if( count_32to8 == 3 )
+			        size_tv <= size_tv + 1;
+		      end
+			if( flag_SOP == 1 )
+			  if( gen_ready_i == 1 )
+			    begin
+			      gen_startofpacket_o_tv <= 0;
+				  
+				  if( count_32to8 == 0)
+				    gen_data_o_tv <= bank_reg[size_tv][7:0];
+				  else if( count_32to8 == 1)
+				    gen_data_o_tv <= bank_reg[size_tv][15:8];
+				  else if( count_32to8 == 2)
+				    gen_data_o_tv <= bank_reg[size_tv][23:16];
+				  else if( count_32to8 == 3)
+				    gen_data_o_tv <= bank_reg[size_tv][32:24];
+				  
+				  count_32to8  <= count_32to8 + 1;
+				  count_end_tx <= count_end_tx + 1;
+			      if( count_32to8 == 3 )
+			        size_tv <= size_tv + 1;
+				end
+			if( count_end_tx == 74 )
+			  begin
+			    gen_endofpacket_o_tv <= 1;
+				flag_start_TX        <= 0;
+				bank_reg[0][0]       <= 0;
+				flag_SOP             <= 0;
+				count_32to8          <= 0;
+				size_tv              <= 5;
+				count_end_tx         <= 0;
+		      end
+		    
+		  end
+		else
+		  begin
+		    
+		    if ( bank_reg[0][0] == 1 )
+              flag_start_TX <= 1;
+		  
+		    if( gen_ready_i == 1 )
+			  begin
+			    gen_endofpacket_o_tv <= 0;
+				gen_valid_o_tv       <= 0;
+			  end
+		  end
+		  
+        
+		  
+		  
+	  end
+	end
 
   
 assign gen_readdata_AvMM_S_o      = gen_readdata_AvMM_S_o_tv;
@@ -276,6 +364,11 @@ assign gen_address_AvMM_M_o   = gen_address_AvMM_M_o_tv;
 assign gen_write_AvMM_M_o     = gen_write_AvMM_M_o_tv;
 assign gen_writedata_AvMM_M_o = gen_writedata_AvMM_M_o_tv;
 assign gen_read_AvMM_M_o      = gen_read_AvMM_M_o_tv;
+
+assign gen_data_o          = gen_data_o_tv;
+assign gen_valid_o         = gen_valid_o_tv;
+assign gen_startofpacket_o = gen_startofpacket_o_tv;
+assign gen_endofpacket_o   = gen_endofpacket_o_tv;
 
 ////------
 endmodule
