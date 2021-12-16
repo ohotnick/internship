@@ -317,6 +317,15 @@ task Init_frame();
   address_ram_frame  = 23;
   data_ram_frame     = 32'h69686766;
   send_MM (data_ram_frame, address_ram_frame);
+  
+  //send number of pack
+  address_ram_frame  = 2;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  //send sec
+  address_ram_frame  = 3;
+  data_ram_frame     = 32'h1;
+  send_MM (data_ram_frame, address_ram_frame);
   /*
   address_ram_frame  = 5;
   data_ram_frame     = 32'h04030201;
@@ -405,12 +414,14 @@ initial
 	  @(posedge tx_clk)
 	    if( flag_end_init_ram == 1 )
 	      begin
-		    data_send_MM = 32'h 0000001;
+		    data_send_MM = 32'h 0000255;
 	        address_MM   = 0;	
 	        send_MM (data_send_MM, address_MM);
 		    $display( " after. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
 			break;
 		  end
+		  
+	//test send second pack
 		  
 	forever
 	  @(posedge tx_clk)
@@ -418,14 +429,37 @@ initial
 		if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
 	      begin
 		    //data_send_MM = 32'h4e8000;
-			data_send_MM = 32'h1;
-	        address_MM   = 0;	
-	        send_MM (data_send_MM, address_MM);
-		    $display( " Send frame again,  %d ns ",$time  );
-			break;
+			address_MM_read = 0;
+	        read_MM (data_read_MM, address_MM_read);
+			if( readdata_AvMM_S_o == 32'h254 )
+			  begin
+			    //$stop;
+    			data_send_MM = 32'h255;
+	            address_MM   = 0;	
+	            send_MM (data_send_MM, address_MM);
+		        $display( " Send frame again,  %d ns ",$time  );
+			    break;
+			  end
 		  end
 	
-	//Init_frame();
+	forever
+	  @(posedge tx_clk)
+	    //if(( data_rx_error_0 == 2 ) & ( data_rx_valid_0 == 1 ) & ( data_rx_eop_0 == 1 ))
+		if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
+	      begin
+		    //data_send_MM = 32'h4e8000;
+			address_MM_read = 0;
+	        read_MM (data_read_MM, address_MM_read);
+			if( readdata_AvMM_S_o == 32'h254 )
+			  begin
+			    $stop;
+    			data_send_MM = 32'h251;
+	            address_MM   = 0;	
+	            send_MM (data_send_MM, address_MM);
+		        $display( " Send frame again,  %d ns ",$time  );
+			    break;
+			  end
+		  end
 
   
   end

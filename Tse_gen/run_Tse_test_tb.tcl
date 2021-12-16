@@ -153,5 +153,5 @@ elab_debug
 do $dut_wave_do
 
 # Run the simulation
-#run -all
-run 4000000
+run -all
+#run 40000000

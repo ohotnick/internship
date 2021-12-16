@@ -127,7 +127,7 @@ always_ff @( posedge clk_i )
 				gen_writedata_AvMM_M_o_tv <= 32'h2008;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 				gen_write_AvMM_M_o_tv     <= 1;
 				
-				bank_reg[0][24] <= 0;
+				//bank_reg[0][24] <= 0;
 				
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
@@ -171,6 +171,7 @@ always_ff @( posedge clk_i )
 				
 				gen_address_AvMM_M_o_tv   <= 8'h2;
 				gen_read_AvMM_M_o_tv      <= 1;
+				bank_reg[0][24]           <= 0;
 				if( gen_waitrequest_AvMM_M_i == 0 )
 				  begin
 					gen_read_AvMM_M_o_tv  <= 0;
@@ -184,7 +185,8 @@ always_ff @( posedge clk_i )
 				      end
 				    else
 				      begin
-					    flagMM_3 <= 0;
+					    flagMM_3        <= 0;
+						bank_reg[0][24] <= 1;
 				      end
 					
 				  end
@@ -224,7 +226,6 @@ always_ff @( posedge clk_i )
       end
   end
   
-  
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
@@ -234,6 +235,8 @@ always_ff @( posedge clk_i )
 		flag_start_write_TSE <= 0;
 		bank_reg[0]          <= 0;
 		bank_reg[1]          <= 0;
+		bank_reg[2]          <= 0;
+		bank_reg[3]          <= 0;
 		
 		flagTest_ram         <= 0;
       end
@@ -256,7 +259,8 @@ always_ff @( posedge clk_i )
 		if ( bank_reg[0][23] == 1 )
           flag_start_write_TSE <= 1;  
 		  
-		flagTest_ram <= bank_reg[0];
+		flagTest_ram <= bank_reg[3];
+		//flagTest_ram <= cout_one_sec;
           
       end
   end
@@ -272,6 +276,11 @@ logic flag_SOP;
 logic [1:0]count_32to8;
 logic [10:0]size_tv;
 logic [10:0]count_end_tx;
+logic [10:0]size_frame;
+logic [31:0]count_pack_work;
+
+logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
+logic [31:0]count_time_work;
    
 //Avalon-ST Source
 always_ff @( posedge clk_tx_i )
@@ -283,11 +292,12 @@ always_ff @( posedge clk_tx_i )
 		gen_startofpacket_o_tv <= 0;
 		gen_endofpacket_o_tv   <= 0;
 		
-		count_32to8   <= 0;
-		flag_start_TX <= 0;
-		size_tv       <= 5;
-		count_end_tx  <= 0;
-		flag_SOP      <= 0;
+		count_32to8     <= 0;
+		flag_start_TX   <= 0;
+		size_tv         <= 5;
+		count_end_tx    <= 0;
+		flag_SOP        <= 0;
+		count_pack_work <= 0;
       end
     else
       begin
@@ -324,36 +334,92 @@ always_ff @( posedge clk_tx_i )
 			      if( count_32to8 == 3 )
 			        size_tv <= size_tv + 1;
 				end
-			if( count_end_tx == 74 )
+			if(( count_end_tx == size_frame ) && ( gen_endofpacket_o_tv == 0 ))
 			  begin
 			    gen_endofpacket_o_tv <= 1;
-				flag_start_TX        <= 0;
-				bank_reg[0][0]       <= 0;
-				flag_SOP             <= 0;
 				count_32to8          <= 0;
 				size_tv              <= 5;
 				count_end_tx         <= 0;
+				if(( bank_reg[0][2] == 0 ) && ( bank_reg[2] != 0)) 
+				  count_pack_work      <= count_pack_work + 1;
+				
+				if(( count_pack_work == bank_reg[2]) && ( bank_reg[0][2] == 0 ))
+				  begin
+				    bank_reg[0][0]       <= 0;
+				    flag_start_TX        <= 0;
+				    count_pack_work      <= 0;
+					flag_SOP             <= 0;
+				  end
+				else if(( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 ))
+				  begin
+				    bank_reg[0][0]       <= 0;
+				    flag_start_TX        <= 0;
+				    count_pack_work      <= 0;
+					flag_SOP             <= 0;
+				  end
+				  
 		      end
+			else if(( gen_endofpacket_o_tv == 1 ))
+			  begin
+			    if( gen_ready_i == 1 )
+			      begin
+			        gen_endofpacket_o_tv <= 0;
+			    	gen_valid_o_tv       <= 0;
+					flag_SOP             <= 0;
+			      end
+			  end
 		    
 		  end
 		else
 		  begin
 		    
 		    if ( bank_reg[0][0] == 1 )
-              flag_start_TX <= 1;
+			  begin
+                flag_start_TX   <= 1;
+				if( bank_reg[0][13:3] != 0 )
+				  size_frame <= bank_reg[0][13:3];  
+				else
+				  size_frame <= 60;
+			  end
 		  
 		    if( gen_ready_i == 1 )
 			  begin
 			    gen_endofpacket_o_tv <= 0;
 				gen_valid_o_tv       <= 0;
 			  end
-		  end
-		  
-        
-		  
+		  end 
 		  
 	  end
 	end
+
+  
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      begin
+        cout_one_sec    <= 0;
+		count_time_work <= 0;
+      end
+    else
+      begin
+	  
+	    if( flag_start_TX == 0 )
+		  begin
+		    cout_one_sec    <= 0;
+			count_time_work <= 0;
+	      end
+		else if( cout_one_sec >= 32'h30d4 )
+		  begin
+		    cout_one_sec    <= 0;
+			count_time_work <= count_time_work + 1;
+	      end
+		else if( flag_start_TX == 1 )
+		  begin
+		    cout_one_sec <= cout_one_sec + 1;
+		  end
+		
+      end
+  end 
 
   
 assign gen_readdata_AvMM_S_o      = gen_readdata_AvMM_S_o_tv;
