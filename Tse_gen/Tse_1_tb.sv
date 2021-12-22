@@ -326,6 +326,12 @@ task Init_frame();
   address_ram_frame  = 3;
   data_ram_frame     = 32'h1;
   send_MM (data_ram_frame, address_ram_frame);
+  //send speed
+  address_ram_frame  = 4;
+  //data_ram_frame     = 32'hfa000000;                //1000
+  data_ram_frame     = 32'h7d000000;                //500
+  send_MM (data_ram_frame, address_ram_frame);
+  
   /*
   address_ram_frame  = 5;
   data_ram_frame     = 32'h04030201;

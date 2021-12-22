@@ -280,7 +280,13 @@ logic [10:0]size_frame;
 logic [31:0]count_pack_work;
 
 logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
-logic [31:0]count_time_work;
+logic [31:0] count_time_work;
+
+logic flag_work_speed;
+logic [9:0]work_speed;
+logic [9:0]wait_speed;
+logic [9:0]wait_speed_const;
+logic [10:0]count_work_speed;
    
 //Avalon-ST Source
 always_ff @( posedge clk_tx_i )
@@ -298,10 +304,16 @@ always_ff @( posedge clk_tx_i )
 		count_end_tx    <= 0;
 		flag_SOP        <= 0;
 		count_pack_work <= 0;
+		
+		flag_work_speed  <= 0;
+		work_speed       <= 0;
+		count_work_speed <= 0;
+		wait_speed       <= 0;
+		wait_speed_const <= 0;
       end
     else
       begin
-	    if( flag_start_TX == 1 )
+	    if(( flag_start_TX == 1 ) && ( flag_work_speed == 0 ))
 		  begin
             
 			if( flag_SOP == 0 )
@@ -366,9 +378,31 @@ always_ff @( posedge clk_tx_i )
 			        gen_endofpacket_o_tv <= 0;
 			    	gen_valid_o_tv       <= 0;
 					flag_SOP             <= 0;
+					
+					if( count_work_speed != 0 )
+					  begin
+					    flag_work_speed <= 1;
+					  end
+					
 			      end
 			  end
 		    
+			if((( count_pack_work == bank_reg[2]) && ( bank_reg[0][2] == 0 )) || (( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 )))
+			  begin
+			    count_work_speed     <= 0;
+			    work_speed           <= 0;
+			  end
+			else
+			  begin
+				if( (work_speed + 1) < bank_reg[4][31:22] )
+				  work_speed <= work_speed + 1;
+				else if( bank_reg[4][31:22] < 1000 )
+				  begin
+					work_speed       <= 0;
+					count_work_speed <= count_work_speed + 1;
+				  end
+			  end
+			
 		  end
 		else
 		  begin
@@ -387,7 +421,29 @@ always_ff @( posedge clk_tx_i )
 			    gen_endofpacket_o_tv <= 0;
 				gen_valid_o_tv       <= 0;
 			  end
-		  end 
+			  
+			wait_speed_const <= 1000 - bank_reg[4][31:22];
+			  
+			if(( flag_work_speed == 1 )&&( flag_start_TX == 1 ))              //count wait
+			  begin
+			    
+			    if( (wait_speed + 1) < wait_speed_const )
+				//if( (wait_speed + 1) < (1000) )
+			      wait_speed <= wait_speed + 1;
+			    else //if( (work_speed + 1) == bank_reg[4][31:22] )
+			      begin
+				    count_work_speed <= count_work_speed - 1;
+					wait_speed       <= 0;
+					if( (count_work_speed - 1) == 0 )
+					  begin
+						flag_work_speed <= 0;
+					  end
+			      end
+			  end
+			else if(( flag_work_speed == 1 )&&( flag_start_TX == 0 ))
+			  flag_work_speed <= 0;
+			  
+		  end //else
 		  
 	  end
 	end
