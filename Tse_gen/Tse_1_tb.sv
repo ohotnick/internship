@@ -1,52 +1,9 @@
-
 `timescale 1 ns / 10 ps
-
 
 module tb ;
 
 
-
-//  Core Settings 
-//  WARNING: DO NOT MODIFY THESE PARAMETERS
-//  -------------------------------
-// $<RTL_PARAMETERS>
-//parameter ENABLE_MAGIC_DETECT = 0;
-//parameter ENABLE_MDIO = 0;
-//parameter ENABLE_SUP_ADDR = 0;
-//parameter CORE_VERSION = 3328;
-//parameter MDIO_CLK_DIV = 40;
-//parameter ENA_HASH = 0;
-//parameter STAT_CNT_ENA = 1;
-//parameter ENABLE_HD_LOGIC = 0;
-//parameter REDUCED_INTERFACE_ENA = 0;
-//parameter ENABLE_GMII_LOOPBACK = 0;
-//parameter ENABLE_MAC_FLOW_CTRL = 0;
-//parameter ENABLE_MAC_RX_VLAN = 0;
-//parameter ENABLE_MAC_TX_VLAN = 0;
-//parameter SYNCHRONIZER_DEPTH = 3;
-//parameter ENABLE_EXTENDED_STAT_REG = 0;
-//parameter ENABLE_MAC_TXADDR_SET = 1;
-//parameter CRC32GENDELAY = 6;
-//parameter CRC32S1L2_EXTERN = 0;
-//parameter CRC32DWIDTH = 8;
-//parameter CRC32CHECK16BIT = 0;
-//parameter CUST_VERSION = 0;
-//parameter RESET_LEVEL = 1;
-//parameter USE_SYNC_RESET = 1;
-//parameter TSTAMP_FP_WIDTH = 4;
-//parameter MAX_CHANNELS = 1;
-//parameter ENABLE_CLK_SHARING = 0;
-//parameter ENABLE_SHIFT16 = 1;
-//parameter ENABLE_MACLITE = 0;
-//parameter MACLITE_GIGE = 0;
-//parameter ENABLE_ENA = 0;
-//parameter EG_ADDR = 8;
-//parameter ING_ADDR = 8;
 parameter REG_ADDR_WIDTH = 8;
-//parameter RX_AFULL_CHANNEL_WIDTH = 1;
-
-// END_OF_RTL_PARAMETERS
-
 
 //  Register Interface
 //  ------------------
@@ -97,16 +54,8 @@ logic [7:0]gm_tx_rx_d_0;
  logic [4:0]data_rx_error_0;
  logic data_rx_valid_0;
  logic data_rx_eop_0;
-
-//  Clocks
-//  ------
-
-//  initial 
-//    forever 
- //       #100 reg_clk=!reg_clk;
 		
-always 
-   //begin : process_26
+always //50
    begin
    reg_clk <= 1'b 1;    
    #( 10 ); 
@@ -116,12 +65,12 @@ always
 
 logic tx_clk;
    
-always 
+always    //125
    begin
    tx_clk <= 1'b 1;    
-   #( 5 ); 
+   #( 4 ); 
    tx_clk <= 1'b 0;    
-   #( 5 ); 
+   #( 4 ); 
    end
 		
 initial
@@ -137,18 +86,11 @@ initial
     reg_rd      <= 0;
 	reg_wr      <= 0;
 	reg_data_in <= 32'h2008;
-	/*
-	#( 50 )
-	  reg_wr   <= 1'h 1;
-	  reg_addr <= 8'h 2;
-	@( negedge waitrequest_gen_tse )
-	 begin
-	  reg_wr   <= 1'h 0;
-	*/  
+  
 	#( 50 )
 	  reg_rd   <= 1'h 1;
 	  reg_addr <= 8'h 2;
-	  //end
+	  
 	@( negedge waitrequest_gen_tse )
 	  reg_rd   <= 1'h 0;
 	  
@@ -318,30 +260,58 @@ task Init_frame();
   data_ram_frame     = 32'h69686766;
   send_MM (data_ram_frame, address_ram_frame);
   
+  address_ram_frame  = 24;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 25;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 26;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 27;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 28;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 29;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 30;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
+  address_ram_frame  = 31;
+  data_ram_frame     = 32'h0;
+  send_MM (data_ram_frame, address_ram_frame);
+  
   //send number of pack
   address_ram_frame  = 2;
-  data_ram_frame     = 32'h0;
+  data_ram_frame     = 32'ha;
   send_MM (data_ram_frame, address_ram_frame);
   //send sec
   address_ram_frame  = 3;
-  data_ram_frame     = 32'h1;
+  data_ram_frame     = 32'h2;
   send_MM (data_ram_frame, address_ram_frame);
   //send speed
   address_ram_frame  = 4;
   //data_ram_frame     = 32'hfa000000;                //1000
-  data_ram_frame     = 32'h7d000000;                //500
+  //data_ram_frame     = 32'h7d000000;                //500
+  //data_ram_frame     = 32'h7d03483c;                //500 3483c:105-60
+  //data_ram_frame     = 32'h7d02e03c;                //500 :92-60
+  data_ram_frame     = 32'h7d02e03e;                //500 :92-62
+  //data_ram_frame     = 32'h7d01e03c;                //500 :60-60
   send_MM (data_ram_frame, address_ram_frame);
   
-  /*
-  address_ram_frame  = 5;
-  data_ram_frame     = 32'h04030201;
-  while( address_ram_frame <= 384 )
-    begin
-      send_MM (data_ram_frame, address_ram_frame);
-	  data_ram_frame    = data_ram_frame + 32'h01010101;
-	  address_ram_frame = address_ram_frame + 1;
-    end
-	*/
+  // 60-61:60,61/ 60-62:60,61,62/ 60-63:60,61,62,63
+  
   $display( "Success init frame,  %d ns ",$time  );
 
 endtask
@@ -360,7 +330,6 @@ initial
 	logic [31:0]data_to_check;
 	logic [31:0]data_take;
 	
-	//data_send_MM = 32'h 1000001;
 	data_send_MM = 32'h 400000;
 	address_MM   = 0;
 	
@@ -420,7 +389,7 @@ initial
 	  @(posedge tx_clk)
 	    if( flag_end_init_ram == 1 )
 	      begin
-		    data_send_MM = 32'h 0000255;
+		    data_send_MM = 32'h 0000251;
 	        address_MM   = 0;	
 	        send_MM (data_send_MM, address_MM);
 		    $display( " after. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
@@ -431,16 +400,15 @@ initial
 		  
 	forever
 	  @(posedge tx_clk)
-	    //if(( data_rx_error_0 == 2 ) & ( data_rx_valid_0 == 1 ) & ( data_rx_eop_0 == 1 ))
 		if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
 	      begin
 		    //data_send_MM = 32'h4e8000;
 			address_MM_read = 0;
 	        read_MM (data_read_MM, address_MM_read);
-			if( readdata_AvMM_S_o == 32'h254 )
+			if( readdata_AvMM_S_o == 32'h250 )
 			  begin
 			    //$stop;
-    			data_send_MM = 32'h255;
+    			data_send_MM = 32'h257;
 	            address_MM   = 0;	
 	            send_MM (data_send_MM, address_MM);
 		        $display( " Send frame again,  %d ns ",$time  );
@@ -456,7 +424,7 @@ initial
 		    //data_send_MM = 32'h4e8000;
 			address_MM_read = 0;
 	        read_MM (data_read_MM, address_MM_read);
-			if( readdata_AvMM_S_o == 32'h254 )
+			if( readdata_AvMM_S_o == 32'h256 )
 			  begin
 			    $stop;
     			data_send_MM = 32'h251;

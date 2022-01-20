@@ -95,6 +95,21 @@ if [regexp {/tb/dut/data_rx_ready_0} [find signals /tb/dut/data_rx_ready_0]]    
 if [regexp {/tb/dut/data_rx_valid_0} [find signals /tb/dut/data_rx_valid_0]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_rx_valid_0}
 if [regexp {/tb/dut/data_rx_error_0} [find signals /tb/dut/data_rx_error_0]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_rx_error_0}
 
+add wave -noupdate -divider -height 40 {RAND}
+if [regexp {/tb/dut/rx_clk_0} [find signals /tb/dut/rx_clk_0]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/rx_clk_0}
+if [regexp {/tb/dut/data_tx_data_0} [find signals /tb/dut/data_tx_data_0]]          {add wave -noupdate -format Literal -radix hexadecimal /tb/dut/data_tx_data_0}
+if [regexp {/tb/dut/data_tx_sop_0} [find signals /tb/dut/data_tx_sop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_sop_0}
+if [regexp {/tb/dut/data_tx_eop_0} [find signals /tb/dut/data_tx_eop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_eop_0}
+if [regexp {/tb/dut_gen/flag_SOP} [find signals /tb/dut_gen/flag_SOP]]              {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/flag_SOP}
+if [regexp {/tb/dut_gen/count_queue} [find signals /tb/dut_gen/count_queue]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/count_queue}
+if [regexp {/tb/dut_gen/value_rnd_1} [find signals /tb/dut_gen/value_rnd_1]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_1}
+if [regexp {/tb/dut_gen/value_rnd_2} [find signals /tb/dut_gen/value_rnd_2]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_2}
+if [regexp {/tb/dut_gen/value_rnd_3} [find signals /tb/dut_gen/value_rnd_3]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_3}
+if [regexp {/tb/dut_gen/count_rnd_1_a} [find signals /tb/dut_gen/count_rnd_1_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_1_a}
+if [regexp {/tb/dut_gen/count_rnd_2_a} [find signals /tb/dut_gen/count_rnd_2_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_2_a}
+if [regexp {/tb/dut_gen/count_rnd_3_a} [find signals /tb/dut_gen/count_rnd_3_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_3_a}
+if [regexp {/tb/dut_gen/size_frame} [find signals /tb/dut_gen/size_frame]]          {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/size_frame}
+
 
 add wave -noupdate -divider -height 40 {ALL WIRE}
 add wave -r *
