@@ -44,6 +44,7 @@ if [regexp {/tb/dut/reg_busy} [find signals /tb/dut/reg_busy]]              {add
 add wave -noupdate -divider -height 40 {GEN INTERFACE} 
 add wave -noupdate -divider -height 40 {AVALON-MM M} 
 if [regexp {/tb/dut_gen/clk_i} [find signals /tb/dut_gen/clk_i]]                        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/clk_i}
+if [regexp {/tb/dut_gen/next_MM} [find signals /tb/dut_gen/next_MM]]                 {add wave -noupdate -format Logic  /tb/dut_gen/next_MM}
 if [regexp {/tb/dut_gen/srst_i} [find signals /tb/dut_gen/srst_i]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/srst_i}
 
 if [regexp {/tb/dut_gen/gen_readdata_AvMM_M_i} [find signals /tb/dut_gen/gen_readdata_AvMM_M_i]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_readdata_AvMM_M_i}
