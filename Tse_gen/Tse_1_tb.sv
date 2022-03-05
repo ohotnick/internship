@@ -42,7 +42,7 @@ logic gm_tx_rx_err_0;
 logic [7:0]gm_tx_rx_d_0;
 
 //Avalon-MM slave
-   logic [8:0]address_AvMM_S_i;
+   logic [9:0]address_AvMM_S_i;
    logic write_AvMM_S_i;
    logic [31:0]writedata_AvMM_S_i;
    logic read_AvMM_S_i;
@@ -99,7 +99,7 @@ initial
   
   
   
-task send_MM ( logic [31:0]data_send_MM, logic [8:0]address_MM );
+task send_MM ( logic [31:0]data_send_MM, logic [9:0]address_MM );
 
   @(posedge reg_clk)
     begin
@@ -126,7 +126,7 @@ task send_MM ( logic [31:0]data_send_MM, logic [8:0]address_MM );
   
 endtask
 
-task read_MM ( logic [31:0]data_read_MM, logic [8:0]address_MM );
+task read_MM ( logic [31:0]data_read_MM, logic [9:0]address_MM );
 
   @(posedge reg_clk)
     begin
@@ -322,7 +322,7 @@ initial
   begin
     
 	logic [31:0]data_send_MM;
-	logic [8:0]address_MM;
+	logic [9:0]address_MM;
 	
 	logic [31:0]data_read_MM;
 	logic [8:0]address_MM_read;
