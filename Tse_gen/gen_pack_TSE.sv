@@ -110,6 +110,9 @@ always_ff @( posedge clk_i )
       state_MM <= next_MM;
   end
   
+logic [31:0]flagTest_ram;
+assign flagTest_ram = gen_reg.control;
+  
 always_comb
   begin
     next_MM = XXX;
@@ -323,7 +326,7 @@ always_ff @(posedge clk_i)
                       if( gen_waitrequest_AvMM_M_i == 0 )
                         begin
                           gen_read_AvMM_M_o_tv      <= 0;
-						  if( gen_readdata_AvMM_M_i == TSE_REG_VAL_2_COMCONF )
+						  if( gen_readdata_AvMM_M_i != TSE_REG_VAL_2_COMCONF )
                             gen_reg.control[INIT_BIT] <= 0;
 						end  
 					  
