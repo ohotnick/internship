@@ -40,6 +40,8 @@ if [regexp {/tb/dut/reg_data_out} [find signals /tb/dut/reg_data_out]]      {add
 if [regexp {/tb/dut/reg_wr} [find signals /tb/dut/reg_wr]]                  {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/reg_wr}
 if [regexp {/tb/dut/reg_busy} [find signals /tb/dut/reg_busy]]              {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/reg_busy}
 
+if [regexp {/tb/dut_gen/flagTest_ram} [find signals /tb/dut_gen/flagTest_ram]]   {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/flagTest_ram}
+
 #test line
 add wave -noupdate -divider -height 40 {GEN INTERFACE} 
 add wave -noupdate -divider -height 40 {AVALON-MM M} 

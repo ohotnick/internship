@@ -1,6 +1,5 @@
 module gen_pack_TSE (
 input clk_i,
-input clk_tx_i,
 input srst_i,
 
 //Avalon-MM Slave. Init gen
@@ -60,6 +59,7 @@ parameter ADDR_WIDTH    = 9;
 parameter TSE_REG_ADR_COMCONF   = 8'h2;
 parameter TSE_REG_VAL_COMCONF   = 32'h2008;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 parameter TSE_REG_VAL_2_COMCONF = 32'h900001b;   //0,1,3,4,24,27
+parameter TSE_REG_VAL_3_COMCONF = 32'h9000018;  //correct init TSE
 
 //Avalon-MM gen Slave
 logic [31:0]gen_readdata_AvMM_S_o_tv;
@@ -98,7 +98,7 @@ typedef enum logic [2:0] {IDLE         = 3'b000,
                           INIT_TSE_WR  = 3'b110,
                           INIT_TSE_CHK = 3'b111,
                           XXX      = 'x    } state_e_MM;
-						  
+                          
                           
 state_e_MM state_MM, next_MM;
                           
@@ -111,7 +111,7 @@ always_ff @( posedge clk_i )
   end
   
 logic [31:0]flagTest_ram;
-assign flagTest_ram = gen_reg.control;
+assign flagTest_ram = gen_reg.count_pack_work; 
   
 always_comb
   begin
@@ -121,9 +121,9 @@ always_comb
                       next_MM = INIT_TSE_ST;
                     else if(( gen_address_AvMM_S_i <= ADDR_REG )&&((gen_write_AvMM_S_i == 1)||(gen_read_AvMM_S_i == 1)))
                       next_MM = WORK_REG;
-                    else if(( ADDR_RAM_1 <= gen_address_AvMM_S_i <= ADDR_RAM_2 )&&((gen_write_AvMM_S_i == 1)||(gen_read_AvMM_S_i == 1)))
+                    else if((( ADDR_RAM_1 <= gen_address_AvMM_S_i )&&(gen_address_AvMM_S_i <= ADDR_RAM_2))&&((gen_write_AvMM_S_i == 1)||(gen_read_AvMM_S_i == 1)))
                       next_MM = WORK_RAM;
-                    else if(( ADDR_TSE_1 <= gen_address_AvMM_S_i <= ADDR_TSE_2 )&&((gen_write_AvMM_S_i == 1)||(gen_read_AvMM_S_i == 1)))
+                    else if((( ADDR_TSE_1 <= gen_address_AvMM_S_i )&&( gen_address_AvMM_S_i <= ADDR_TSE_2 ))&&((gen_write_AvMM_S_i == 1)||(gen_read_AvMM_S_i == 1)))
                       next_MM = TSE_RW;
                     else
                       next_MM = IDLE;
@@ -150,25 +150,20 @@ always_comb
                       if( gen_readdata_AvMM_M_i == TSE_REG_VAL_COMCONF )
                         next_MM = INIT_TSE_WR;
                           else
-					    next_MM = INIT_TSE_ST;
+                        next_MM = INIT_TSE_ST;
                     else
                       next_MM = INIT_TSE_RD;
       INIT_TSE_WR : if( gen_waitrequest_AvMM_M_i == 0 )
-					  next_MM = INIT_TSE_CHK;
+                      next_MM = INIT_TSE_CHK;
                     else
                       next_MM = INIT_TSE_WR;
       INIT_TSE_CHK: if( gen_waitrequest_AvMM_M_i == 0 )
-                      begin
-						if( gen_readdata_AvMM_M_i == TSE_REG_VAL_2_COMCONF )
-                          next_MM = INIT_TSE_ST;
-						else
-						  next_MM = IDLE;
-				      end
-					else
-					  next_MM = INIT_TSE_CHK;
+                      next_MM = IDLE;
+                    else
+                      next_MM = INIT_TSE_CHK;
       
       default:    next_MM = XXX;
-	endcase
+    endcase
   end
   
 always_ff @(posedge clk_i)
@@ -200,15 +195,22 @@ always_ff @(posedge clk_i)
         case (next_MM)
           IDLE:     begin
           
-                      if( gen_write_AvMM_S_i == 1 )
+                      if(( gen_write_AvMM_S_i == 1 ) && (gen_waitrequest_AvMM_S_o_tv != 0))
                         begin
                           gen_waitrequest_AvMM_S_o_tv <= 0;
                         end
-                      if( gen_read_AvMM_S_i == 1)
+                      if(( gen_read_AvMM_S_i == 1 )&&( gen_readdatavalid_AvMM_S_o_tv != 1 ))
                         begin
                           gen_waitrequest_AvMM_S_o_tv   <= 0;
                           gen_readdata_AvMM_S_o_tv      <= VAL_NOT_FOUND;
                           gen_readdatavalid_AvMM_S_o_tv <= 1;
+                        end
+                        
+                      if( gen_waitrequest_AvMM_M_i == 0 )
+                        begin
+                          gen_read_AvMM_M_o_tv      <= 0;
+                          if( gen_readdata_AvMM_M_i == TSE_REG_VAL_3_COMCONF )
+                            gen_reg.control[INIT_BIT] <= 0;
                         end
                       
                     end
@@ -310,28 +312,21 @@ always_ff @(posedge clk_i)
                       gen_read_AvMM_M_o_tv      <= 1;
                       
                     end
-		INIT_TSE_WR:begin
-		              
-					  gen_address_AvMM_M_o_tv   <= TSE_REG_ADR_COMCONF;
+        INIT_TSE_WR:begin
+                      
+                      gen_address_AvMM_M_o_tv   <= TSE_REG_ADR_COMCONF;
                       //gen_writedata_AvMM_M_o_tv <= 32'b100111011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1 4)PROMIS_EN=1 5)PAD_EN = 1 8)PAUSE_IGNORE = 1
                       gen_writedata_AvMM_M_o_tv <= TSE_REG_VAL_2_COMCONF;   //0,1,3,4,24,27
                       gen_write_AvMM_M_o_tv     <= 1;
-					  
-		            end
-	  INIT_TSE_CHK: begin
-	                  
+                      
+                    end
+      INIT_TSE_CHK: begin
+                      
                       gen_address_AvMM_M_o_tv   <= TSE_REG_ADR_COMCONF;
                       gen_read_AvMM_M_o_tv      <= 1;
-					  
-                      if( gen_waitrequest_AvMM_M_i == 0 )
-                        begin
-                          gen_read_AvMM_M_o_tv      <= 0;
-						  if( gen_readdata_AvMM_M_i != TSE_REG_VAL_2_COMCONF )
-                            gen_reg.control[INIT_BIT] <= 0;
-						end  
-					  
-					end
-		endcase
+                      
+                    end
+        endcase
       end //else @ff
   end
   
@@ -604,7 +599,7 @@ logic [9:0]value_rnd_2;
 logic [9:0]value_rnd_3;
    
 //Avalon-ST Source
-always_ff @( posedge clk_tx_i )
+always_ff @( posedge clk_i )
   begin
     if(srst_i)
       begin
@@ -858,7 +853,7 @@ always_ff @( posedge clk_tx_i )
       end
     end
     
-always_ff @( posedge clk_tx_i )
+always_ff @( posedge clk_i )
   begin
     if(srst_i)
       begin
@@ -1037,7 +1032,7 @@ always_ff @( posedge clk_tx_i )
       end
   end
   
-always_ff @( posedge clk_tx_i )
+always_ff @( posedge clk_i )
   begin
     if(srst_i)
       begin

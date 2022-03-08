@@ -97,7 +97,7 @@ initial
 	  
   end
   
-  
+logic [31:0]read_data_global; 
   
 task send_MM ( logic [31:0]data_send_MM, logic [9:0]address_MM );
 
@@ -143,7 +143,8 @@ task read_MM ( logic [31:0]data_read_MM, logic [9:0]address_MM );
 		
           if ( readdatavalid_AvMM_S_o == 1 )
             begin
-		      data_read_MM = readdata_AvMM_S_o;
+		      data_read_MM     = readdata_AvMM_S_o;
+			  read_data_global = readdata_AvMM_S_o;
 		      break;
 	        end
 		end
@@ -153,6 +154,23 @@ task read_MM ( logic [31:0]data_read_MM, logic [9:0]address_MM );
   
 endtask
 
+task Check_Aval_MM(logic [9:0]address_MM_check);
+  
+  logic [31:0]present_data;
+  
+  read_MM (present_data, address_MM_check);
+  present_data     = read_data_global;
+  read_data_global = read_data_global + 1;
+  
+  send_MM (read_data_global, address_MM_check);
+  read_MM (present_data, address_MM_check);
+  
+  if(read_data_global == (present_data + 1))
+    $display( "Check good adr = %h,  %d ns ", address_MM_check ,$time  );
+  else
+    $display( "Check err adr = %h,  %d ns ", address_MM_check ,$time  );
+  
+endtask
 
 /*
 task Avalon_gen_test();
@@ -317,6 +335,7 @@ task Init_frame();
 endtask
   
 logic flag_end_init_ram;
+
   
 initial
   begin
@@ -325,20 +344,29 @@ initial
 	logic [9:0]address_MM;
 	
 	logic [31:0]data_read_MM;
-	logic [8:0]address_MM_read;
+	logic [9:0]address_MM_read;
 	
 	logic [31:0]data_to_check;
 	logic [31:0]data_take;
 	
-	data_send_MM = 32'h 400000;
-	address_MM   = 0;
+	data_send_MM = 32'h 000101;
+	address_MM   = 1;
 	
 	//$monitor( "Status Init TSE: 1)Read:%b  %d ns",readdata_gen_tse, $time);
+	$display( "Start check Avalon-MM  %d ns ",$time  );
 	#50;
+	$display( "Check Avalon-MM address 0-3  %d ns ",$time  );
+	
+	Check_Aval_MM(address_MM);
+	
+	send_MM (data_send_MM, address_MM);
+	address_MM      = 5;
+	send_MM (data_send_MM, address_MM);
+	#100;
 	address_MM_read = 1;
 	read_MM (data_read_MM, address_MM_read);      //read data_word 0x01 status reg
 	#100;
-	
+	$stop;
     send_MM (data_send_MM, address_MM);           //send comand [22]-read data, from address [21..14]=0
 	
 	#100;
@@ -482,7 +510,7 @@ Tse_1 dut
    .rx_afull_valid    ( ),
    .rx_afull_data     ( ),
    .rx_afull_channel  ( ),
-   .tx_clk_0          ( tx_clk ),
+   .tx_clk_0          ( reg_clk ),
    .magic_wakeup_0    ( ),
    .xoff_gen_0        ( ),
    .tx_crc_fwd_0      ( 0 ),
@@ -496,7 +524,7 @@ Tse_1 dut
    .data_rx_ready_0   ( 1 ),
    .pkt_class_valid_0 ( ),
    .pkt_class_data_0  ( ),
-   .rx_clk_0          ( tx_clk ),
+   .rx_clk_0          ( reg_clk ),
    .data_tx_error_0   ( 0 ),
    .data_tx_valid_0   ( valid_aval ),
    .data_tx_data_0    ( data_aval ),
@@ -531,7 +559,6 @@ Tse_1 dut
 gen_pack_TSE dut_gen (
 
     .clk_i                  (reg_clk),
-	.clk_tx_i               (tx_clk),
 	.srst_i                 (reset),
 
 //Avalon-MM Slave. Init gen
