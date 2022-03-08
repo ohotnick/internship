@@ -160,15 +160,22 @@ task Check_Aval_MM(logic [9:0]address_MM_check);
   
   read_MM (present_data, address_MM_check);
   present_data     = read_data_global;
-  read_data_global = read_data_global + 1;
+  read_data_global = read_data_global + 32'h100000;
   
   send_MM (read_data_global, address_MM_check);
   read_MM (present_data, address_MM_check);
   
-  if(read_data_global == (present_data + 1))
+  if(read_data_global == (present_data + 32'h100000))
     $display( "Check good adr = %h,  %d ns ", address_MM_check ,$time  );
   else
-    $display( "Check err adr = %h,  %d ns ", address_MM_check ,$time  );
+    begin
+	  if(read_data_global == 10'h404)
+	    $display( "Check good, not work range addr, adr = %h,  %d ns ", address_MM_check ,$time  );
+	  else
+		$display( "Check err adr = %h,  %d ns ", address_MM_check ,$time  );
+	end
+	
+  send_MM (0, address_MM_check);
   
 endtask
 
@@ -350,23 +357,45 @@ initial
 	logic [31:0]data_take;
 	
 	data_send_MM = 32'h 000101;
-	address_MM   = 1;
+	
 	
 	//$monitor( "Status Init TSE: 1)Read:%b  %d ns",readdata_gen_tse, $time);
 	$display( "Start check Avalon-MM  %d ns ",$time  );
 	#50;
 	$display( "Check Avalon-MM address 0-3  %d ns ",$time  );
 	
+	address_MM   = 10'h0;                              //first addr reg
 	Check_Aval_MM(address_MM);
 	
+	address_MM   = 10'h2;                              //middle addr reg
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h3;                              //last addr reg
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h4;                              //next after last addr reg
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'he;                              //before first addr ram
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h10;
+	data_send_MM = 32'h0;
+	send_MM (data_send_MM, address_MM);
+	
+	address_MM   = 10'h10;                             //first addr ram
+	Check_Aval_MM(address_MM);
+	
+	#100;
+	$stop;
 	send_MM (data_send_MM, address_MM);
 	address_MM      = 5;
 	send_MM (data_send_MM, address_MM);
 	#100;
 	address_MM_read = 1;
 	read_MM (data_read_MM, address_MM_read);      //read data_word 0x01 status reg
-	#100;
-	$stop;
+	
+	
     send_MM (data_send_MM, address_MM);           //send comand [22]-read data, from address [21..14]=0
 	
 	#100;
