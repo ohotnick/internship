@@ -50,7 +50,7 @@ parameter ADDR_RAM_1    = 10'h10;
 parameter ADDR_RAM_2    = 10'h17D;
 parameter ADDR_TSE_1    = 10'h200;
 parameter ADDR_TSE_2    = 10'h2E3;
-parameter VAL_NOT_FOUND = 10'h404;
+parameter VAL_NOT_FOUND = 32'h404;
 parameter INIT_BIT      = 24;
 
 parameter DATA_WIDTH    = 32;
@@ -283,8 +283,10 @@ always_ff @(posedge clk_i)
                           gen_read_AvMM_M_o_tv    <= 1;
                           if( gen_waitrequest_AvMM_M_i == 0 )
                             begin
-                              gen_waitrequest_AvMM_S_o_tv <= 0;
-                              gen_readdata_AvMM_S_o_tv    <= gen_readdata_AvMM_M_i;
+                              gen_waitrequest_AvMM_S_o_tv   <= 0;
+                              gen_readdata_AvMM_S_o_tv      <= gen_readdata_AvMM_M_i;
+							  gen_readdatavalid_AvMM_S_o_tv <= 1;
+							  gen_read_AvMM_M_o_tv          <= 0;
                             end
                         end
                       if( gen_write_AvMM_S_i == 1 )
@@ -295,6 +297,7 @@ always_ff @(posedge clk_i)
                           if( gen_waitrequest_AvMM_M_i == 0 )
                             begin
                               gen_waitrequest_AvMM_S_o_tv <= 0;
+							  gen_write_AvMM_M_o_tv       <= 0;
                             end
                         end
 

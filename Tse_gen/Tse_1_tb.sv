@@ -169,8 +169,10 @@ task Check_Aval_MM(logic [9:0]address_MM_check);
     $display( "Check good adr = %h,  %d ns ", address_MM_check ,$time  );
   else
     begin
-	  if(read_data_global == 10'h404)
+	  if(read_data_global == 32'h404)
 	    $display( "Check good, not work range addr, adr = %h,  %d ns ", address_MM_check ,$time  );
+	  else if((address_MM_check == 10'h200)&&(read_data_global == 32'hd00))
+	    $display( "Check good, TSE ID, adr = %h TSE_adr = %h,  %d ns ", address_MM_check, address_MM_check - 10'h200 ,$time  );
 	  else
 		$display( "Check err adr = %h,  %d ns ", address_MM_check ,$time  );
 	end
@@ -379,11 +381,37 @@ initial
 	address_MM   = 10'he;                              //before first addr ram
 	Check_Aval_MM(address_MM);
 	
-	address_MM   = 10'h10;
+	address_MM   = 10'h10;                             // init start ram val
 	data_send_MM = 32'h0;
 	send_MM (data_send_MM, address_MM);
 	
 	address_MM   = 10'h10;                             //first addr ram
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h100;                            // init start ram val
+	data_send_MM = 32'h0;
+	send_MM (data_send_MM, address_MM);
+	
+	address_MM   = 10'h100;                             //some middle addr ram
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h17d;                             // init start ram val
+	data_send_MM = 32'h0;
+	send_MM (data_send_MM, address_MM);
+	
+	address_MM   = 10'h17d;                             //last addr ram
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h17e;                             //next after last addr ram
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h1ff;                              //before first addr TSE
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h200;                              //first addr TSE
+	Check_Aval_MM(address_MM);
+	
+	address_MM   = 10'h201;                              //next addr TSE
 	Check_Aval_MM(address_MM);
 	
 	#100;
