@@ -111,7 +111,7 @@ always_ff @( posedge clk_i )
   end
   
 logic [31:0]flagTest_ram;
-assign flagTest_ram = gen_reg.count_pack_work; 
+assign flagTest_ram = gen_reg.control; 
   
 always_comb
   begin

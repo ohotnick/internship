@@ -54,13 +54,21 @@ logic [7:0]gm_tx_rx_d_0;
  logic [4:0]data_rx_error_0;
  logic data_rx_valid_0;
  logic data_rx_eop_0;
-		
+/*		
 always //50
    begin
    reg_clk <= 1'b 1;    
    #( 10 ); 
    reg_clk <= 1'b 0;    
    #( 10 ); 
+   end
+ */  
+always //125
+   begin
+   reg_clk <= 1'b 1;    
+   #( 4 ); 
+   reg_clk <= 1'b 0;    
+   #( 4 ); 
    end
 
 logic tx_clk;
@@ -414,7 +422,11 @@ initial
 	address_MM   = 10'h201;                              //next addr TSE
 	Check_Aval_MM(address_MM);
 	
-	#100;
+	data_send_MM = 32'h1000000;
+	address_MM   = 0;	
+	send_MM (data_send_MM, address_MM);
+	
+	#400;
 	$stop;
 	send_MM (data_send_MM, address_MM);
 	address_MM      = 5;
@@ -539,13 +551,12 @@ initial
 		    $display( "Start init TSE,  %d ns ",$time  );
 			tb_flag_init_TSE = 1;
 		  end
-        else if ( readdata_gen_tse == 32'h900001b )
+        else if ( readdata_gen_tse == 32'h9000018 )
           begin
 		    $display( "Success init TSE,  %d ns ",$time  );
-			Init_frame();
-			//Avalon_gen_test;
-			flag_end_init_ram = 1;
-			$display( "End init Gen ram, flag_end_init_ram = %d,  %d ns ",flag_end_init_ram,$time  );
+			//Init_frame();
+			//flag_end_init_ram = 1;
+			//$display( "End init Gen ram, flag_end_init_ram = %d,  %d ns ",flag_end_init_ram,$time  );
 		    break;
 			
 	      end
