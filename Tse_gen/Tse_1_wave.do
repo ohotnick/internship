@@ -70,6 +70,7 @@ if [regexp {/tb/dut_gen/gen_waitrequest_AvMM_S_o} [find signals /tb/dut_gen/gen_
 
 add wave -noupdate -divider -height 40 {TRANSMIT INTERFACE}
 if [regexp {/tb/dut/tx_clk_0} [find signals /tb/dut/tx_clk_0]]                      {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/tx_clk_0}
+if [regexp {/tb/dut_gen/next_ST} [find signals /tb/dut_gen/next_ST]]                 {add wave -noupdate -format Logic  /tb/dut_gen/next_ST}
 if [regexp {/tb/dut/data_tx_data_0} [find signals /tb/dut/data_tx_data_0]]          {add wave -noupdate -format Literal -radix hexadecimal /tb/dut/data_tx_data_0}
 if [regexp {/tb/dut/data_tx_sop_0} [find signals /tb/dut/data_tx_sop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_sop_0}
 if [regexp {/tb/dut/data_tx_eop_0} [find signals /tb/dut/data_tx_eop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_eop_0}

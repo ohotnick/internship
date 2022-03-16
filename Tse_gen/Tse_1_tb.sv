@@ -214,119 +214,31 @@ task Avalon_gen_test();
 
 endtask
 */
+
+parameter DATA_WIDTH    = 32;
+parameter ADDR_WIDTH    = 9; 
+logic     [DATA_WIDTH-1:0] ram_temp[(2**ADDR_WIDTH-1):0];
+
 task Init_frame();
 
-  logic [31:0]data_ram_frame;
-  logic [8:0]address_ram_frame;
+  logic   [31:0]data_ram_frame;
+  logic   [9:0]address_ram_frame;
+  integer i;
   
-  address_ram_frame  = 5;
-  data_ram_frame     = 32'h85300000;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 6;
-  data_ram_frame     = 32'h49b610a9;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 7;
-  data_ram_frame     = 32'ha4a60454;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 8;
-  data_ram_frame     = 32'h0008a3c4;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 9;
-  data_ram_frame     = 32'hc3000045;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 10;
-  data_ram_frame     = 32'h00004785;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 11;
-  data_ram_frame     = 32'h00000180;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 12;
-  data_ram_frame     = 32'h1902010a;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 13;
-  data_ram_frame     = 32'h4502010a;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 14;
-  data_ram_frame     = 32'h564d0008;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 15;
-  data_ram_frame     = 32'h05000100;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 16;
-  data_ram_frame     = 32'h64636261;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 17;
-  data_ram_frame     = 32'h68676665;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 18;
-  data_ram_frame     = 32'h6c6b6a69;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 19;
-  data_ram_frame     = 32'h706f6e6d;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 20;
-  data_ram_frame     = 32'h74737271;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 21;
-  data_ram_frame     = 32'h61777675;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 22;
-  data_ram_frame     = 32'h65646362;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 23;
-  data_ram_frame     = 32'h69686766;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 24;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 25;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 26;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 27;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 28;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 29;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 30;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  address_ram_frame  = 31;
-  data_ram_frame     = 32'h0;
-  send_MM (data_ram_frame, address_ram_frame);
-  
+  $readmemh("raminit.txt", ram_temp);
+  i = 0;
+  forever
+    begin
+	  $display( "vall of ram_temp[%d] %h  ",i,ram_temp[i] );
+	  address_ram_frame  = i + 16;
+      data_ram_frame     = ram_temp[i];
+      send_MM (data_ram_frame, address_ram_frame);
+	  i = i + 1;
+	  if(i == 27)
+	    break;
+	end
+
+  /*
   //send number of pack
   address_ram_frame  = 2;
   data_ram_frame     = 32'ha;
@@ -346,13 +258,12 @@ task Init_frame();
   send_MM (data_ram_frame, address_ram_frame);
   
   // 60-61:60,61/ 60-62:60,61,62/ 60-63:60,61,62,63
-  
+  */
   $display( "Success init frame,  %d ns ",$time  );
 
 endtask
   
 logic flag_end_init_ram;
-
   
 initial
   begin
@@ -389,7 +300,7 @@ initial
 	address_MM   = 10'he;                              //before first addr ram
 	Check_Aval_MM(address_MM);
 	
-	address_MM   = 10'h10;                             // init start ram val
+	address_MM   = 10'h10;                             //init start ram val
 	data_send_MM = 32'h0;
 	send_MM (data_send_MM, address_MM);
 	
@@ -426,7 +337,13 @@ initial
 	address_MM   = 0;	
 	send_MM (data_send_MM, address_MM);
 	
-	#400;
+	Init_frame();
+	
+	data_send_MM = 32'h0000029;
+	address_MM   = 0;	
+	send_MM (data_send_MM, address_MM);
+	
+	#4000;
 	$stop;
 	send_MM (data_send_MM, address_MM);
 	address_MM      = 5;

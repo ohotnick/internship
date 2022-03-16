@@ -52,6 +52,8 @@ parameter ADDR_TSE_1    = 10'h200;
 parameter ADDR_TSE_2    = 10'h2E3;
 parameter VAL_NOT_FOUND = 32'h404;
 parameter INIT_BIT      = 24;
+parameter START_S_BIT   = 0;
+parameter SIZE_PACK_BIT = 1;
 
 parameter DATA_WIDTH    = 32;
 parameter ADDR_WIDTH    = 9;  
@@ -75,6 +77,7 @@ logic gen_read_AvMM_M_o_tv;
 logic we_tv;
 //logic [(DATA_WIDTH-1):0] data_tv;
 logic [(ADDR_WIDTH-1):0] r_w_addr_tv;
+logic [(ADDR_WIDTH-1):0] r_w_addr_tv_ST;
 logic [(DATA_WIDTH-1):0] q_tv;
 
 simple_ram     #(
@@ -84,11 +87,13 @@ simple_ram     #(
                 .clk        (clk_i),
                 .we         (we_tv),
                 .data       (gen_writedata_AvMM_S_i),
-                .r_w_addr   (r_w_addr_tv),
+				.r_w_addr   ((gen_reg.control[START_S_BIT] == 1) ? r_w_addr_tv_ST : r_w_addr_tv ),
+                //.r_w_addr   (r_w_addr_tv),
                 
                 .q          (q_tv)
                 );
 
+/*
 typedef enum logic [2:0] {IDLE         = 3'b000,
                           WORK_REG     = 3'b001,
                           WORK_RAM     = 3'b010,
@@ -98,7 +103,30 @@ typedef enum logic [2:0] {IDLE         = 3'b000,
                           INIT_TSE_WR  = 3'b110,
                           INIT_TSE_CHK = 3'b111,
                           XXX      = 'x    } state_e_MM;
-                          
+						  
+						  
+						  typedef enum logic [3:0] {IDLE_ST = 4'b1000,
+                          SOP     = 4'b1001,
+                          SEND    = 4'b1010,
+                          EOP     = 4'b1011,
+                          XXX_ST  = 'x    } state_e_ST;
+						  
+                          */
+typedef enum logic [3:0] {IDLE         = 4'b0000,
+                          WORK_REG     = 4'b0001,
+                          WORK_RAM     = 4'b0010,
+                          TSE_RW       = 4'b0011,
+                          INIT_TSE_ST  = 4'b0100,
+                          INIT_TSE_RD  = 4'b0101,
+                          INIT_TSE_WR  = 4'b0110,
+                          INIT_TSE_CHK = 4'b0111,
+						  
+						  IDLE_ST = 4'b1000,
+                          SOP     = 4'b1001,
+                          SEND    = 4'b1010,
+                          EOP     = 4'b1011,
+                          XXX      = 'x    } state_e_MM;
+						  
                           
 state_e_MM state_MM, next_MM;
                           
@@ -191,21 +219,26 @@ always_ff @(posedge clk_i)
         
         gen_write_AvMM_M_o_tv         <= 0;
         gen_read_AvMM_M_o_tv          <= 0;
+		
+		//r_w_addr_tv                   <= 0;
         
         case (next_MM)
           IDLE:     begin
           
-                      if(( gen_write_AvMM_S_i == 1 ) && (gen_waitrequest_AvMM_S_o_tv != 0))
-                        begin
-                          gen_waitrequest_AvMM_S_o_tv <= 0;
+                      if( gen_reg.control[INIT_BIT] == 0 )
+					    begin
+						  if(( gen_write_AvMM_S_i == 1 ) && (gen_waitrequest_AvMM_S_o_tv != 0))
+							begin
+							  gen_waitrequest_AvMM_S_o_tv <= 0;
+							end
+						  if(( gen_read_AvMM_S_i == 1 )&&( gen_readdatavalid_AvMM_S_o_tv != 1 ))
+							begin
+							  gen_waitrequest_AvMM_S_o_tv   <= 0;
+							  gen_readdata_AvMM_S_o_tv      <= VAL_NOT_FOUND;
+							  gen_readdatavalid_AvMM_S_o_tv <= 1;
+							end
                         end
-                      if(( gen_read_AvMM_S_i == 1 )&&( gen_readdatavalid_AvMM_S_o_tv != 1 ))
-                        begin
-                          gen_waitrequest_AvMM_S_o_tv   <= 0;
-                          gen_readdata_AvMM_S_o_tv      <= VAL_NOT_FOUND;
-                          gen_readdatavalid_AvMM_S_o_tv <= 1;
-                        end
-                        
+						
                       if( gen_waitrequest_AvMM_M_i == 0 )
                         begin
                           gen_read_AvMM_M_o_tv      <= 0;
@@ -256,23 +289,28 @@ always_ff @(posedge clk_i)
                     end
           WORK_RAM: begin
           
-                      //надо добавить бит условия считывания данных во время передачи
-                      if( gen_write_AvMM_S_i == 1 )
+                      //бит условия считывания данных во время передачи
+                      if( gen_reg.control[START_S_BIT] == 0 )
                         begin
-                          gen_waitrequest_AvMM_S_o_tv <= 0;
-                          r_w_addr_tv                 <= ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]);
-                          we_tv                       <= 1;
-                        end
-                      if( gen_read_AvMM_S_i == 1 )
-                        begin
-                          r_w_addr_tv <= ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]);
-                          if(r_w_addr_tv == ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]))
+                          if( gen_write_AvMM_S_i == 1 )
                             begin
-                              gen_waitrequest_AvMM_S_o_tv   <= 0;
-                              gen_readdata_AvMM_S_o_tv      <= q_tv;
-                              gen_readdatavalid_AvMM_S_o_tv <= 1;
+                              gen_waitrequest_AvMM_S_o_tv <= 0;
+                              r_w_addr_tv                 <= ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]);
+                              we_tv                       <= 1;
+                            end
+                          if( gen_read_AvMM_S_i == 1 )
+                            begin
+                              r_w_addr_tv <= ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]);
+                              if(r_w_addr_tv == ( gen_address_AvMM_S_i[8:0] - ADDR_RAM_1[8:0]))
+                                begin
+                                  gen_waitrequest_AvMM_S_o_tv   <= 0;
+                                  gen_readdata_AvMM_S_o_tv      <= q_tv;
+                                  gen_readdatavalid_AvMM_S_o_tv <= 1;
+                                end
                             end
                         end
+                      else
+                        gen_waitrequest_AvMM_S_o_tv <= 1;
                     
                     end
           TSE_RW  : begin
@@ -285,8 +323,8 @@ always_ff @(posedge clk_i)
                             begin
                               gen_waitrequest_AvMM_S_o_tv   <= 0;
                               gen_readdata_AvMM_S_o_tv      <= gen_readdata_AvMM_M_i;
-							  gen_readdatavalid_AvMM_S_o_tv <= 1;
-							  gen_read_AvMM_M_o_tv          <= 0;
+                              gen_readdatavalid_AvMM_S_o_tv <= 1;
+                              gen_read_AvMM_M_o_tv          <= 0;
                             end
                         end
                       if( gen_write_AvMM_S_i == 1 )
@@ -297,7 +335,7 @@ always_ff @(posedge clk_i)
                           if( gen_waitrequest_AvMM_M_i == 0 )
                             begin
                               gen_waitrequest_AvMM_S_o_tv <= 0;
-							  gen_write_AvMM_M_o_tv       <= 0;
+                              gen_write_AvMM_M_o_tv       <= 0;
                             end
                         end
 
@@ -329,236 +367,14 @@ always_ff @(posedge clk_i)
                       gen_read_AvMM_M_o_tv      <= 1;
                       
                     end
+       default:     begin
+                      
+                      gen_address_AvMM_M_o_tv   <= 'x;
+                      
+                    end
         endcase
       end //else @ff
   end
-  
-/* старые строчки//
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        gen_readdata_AvMM_S_o_tv      <= 0;
-        gen_readdatavalid_AvMM_S_o_tv <= 0; 
-        gen_waitrequest_AvMM_S_o_tv   <= 0;
-      end
-    else
-      begin
-
-        if( gen_waitrequest_AvMM_S_o_tv == 0 )
-          begin
-            if( gen_write_AvMM_S_i == 1 )
-              begin
-                bank_reg [gen_address_AvMM_S_i]  <= gen_writedata_AvMM_S_i;
-              end
-        
-            if( gen_read_AvMM_S_i == 1 )
-              begin
-                gen_readdatavalid_AvMM_S_o_tv <= 1;
-                gen_readdata_AvMM_S_o_tv      <= bank_reg [gen_address_AvMM_S_i];
-              end
-          end
-
-        if(( gen_read_AvMM_S_i == 0 ) && ( gen_readdatavalid_AvMM_S_o_tv == 1 ))
-          gen_readdatavalid_AvMM_S_o_tv <= 0;
-        
-          
-      end
-  end  
-          старые строчки//           */  
-          
-/*          
-          
-//Avalon-MM Master
-logic [7:0]gen_address_AvMM_M_o_tv;
-logic gen_write_AvMM_M_o_tv;
-logic [31:0]gen_writedata_AvMM_M_o_tv;
-logic gen_read_AvMM_M_o_tv;
-
-logic flag_init_TSE;
-logic flag_read_TSE;
-logic flag_write_TSE;
-logic flagMM_1;
-logic flagMM_2;
-logic flagMM_3;
-logic [31:0]flagTest_ram;
-
-logic flag_start_TSE;
-logic flag_start_read_TSE;
-logic flag_start_write_TSE;
-
-//Avalon-MM Master
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        gen_address_AvMM_M_o_tv   <= 0;
-        gen_write_AvMM_M_o_tv     <= 0;
-        gen_writedata_AvMM_M_o_tv <= 0;
-        gen_read_AvMM_M_o_tv      <= 0;
-        
-        flag_init_TSE  <= 0;
-        flag_read_TSE  <= 0;
-        flag_write_TSE <= 0;
-        flagMM_1       <= 0;
-        flagMM_2       <= 0;
-        flagMM_3       <= 0;
-
-      end
-    else
-      begin
-
-        if( flag_start_TSE == 1 )
-          flag_init_TSE <= 1;
-        else if( (flag_start_read_TSE == 1 ) & ( flag_write_TSE == 0 ))
-          flag_read_TSE <= 1;
-        else if( flag_start_write_TSE == 1 )
-          flag_write_TSE <= 1;
-
-        if( flag_init_TSE == 1 )                         //SW_RESET and Itit TSE reg
-          begin
-            if( flagMM_1 == 0 )                          //stop Tx/Rx, Reset
-              begin
-                gen_address_AvMM_M_o_tv   <= 8'h2;
-                gen_writedata_AvMM_M_o_tv <= 32'h2008;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
-                gen_write_AvMM_M_o_tv     <= 1;
-                
-                if( gen_waitrequest_AvMM_M_i == 0 )
-                  begin
-                    flagMM_1 <= 1;
-                    gen_write_AvMM_M_o_tv     <= 0;
-                  end
-              end
-            else if( flagMM_2 == 0 )                     //Read
-              begin
-                gen_write_AvMM_M_o_tv     <= 0;
-                
-                gen_address_AvMM_M_o_tv   <= 8'h2;
-                gen_read_AvMM_M_o_tv      <= 1;
-                if( gen_waitrequest_AvMM_M_i == 0 )
-                  begin
-                    gen_read_AvMM_M_o_tv  <= 0;
-                    if( gen_readdata_AvMM_M_i == 32'h2008 )
-                      flagMM_2   <= 1;
-                    else
-                      begin
-                        flagMM_1 <= 0;
-                        flagMM_2 <= 0;
-                      end
-                  end
-              end
-            else if( flagMM_3 == 0 )                     //start
-              begin
-                gen_address_AvMM_M_o_tv   <= 8'h2;
-                //gen_writedata_AvMM_M_o_tv <= 32'b100111011;   //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1 4)PROMIS_EN=1 5)PAD_EN = 1 8)PAUSE_IGNORE = 1
-                gen_writedata_AvMM_M_o_tv <= 32'h900001b;   //0,1,3,4,24,27
-                gen_write_AvMM_M_o_tv     <= 1;
-                if( gen_waitrequest_AvMM_M_i == 0 )
-                  begin
-                    flagMM_3 <= 1;
-                    gen_write_AvMM_M_o_tv <= 0;
-                    end
-              end
-            else                     //Read check
-              begin
-                gen_write_AvMM_M_o_tv     <= 0;
-                
-                gen_address_AvMM_M_o_tv   <= 8'h2;
-                gen_read_AvMM_M_o_tv      <= 1;
-                bank_reg[0][24]           <= 0;
-                if( gen_waitrequest_AvMM_M_i == 0 )
-                  begin
-                    gen_read_AvMM_M_o_tv  <= 0;
-                    
-                    if( gen_readdata_AvMM_M_i == 32'h900001b )
-                      begin
-                        flag_init_TSE <= 0;
-                        flagMM_1      <= 0;
-                        flagMM_2      <= 0;
-                        flagMM_3      <= 0;
-                      end
-                    else
-                      begin
-                        flagMM_3        <= 0;
-                        bank_reg[0][24] <= 1;
-                      end
-                    
-                  end
-              end
-
-          end    //end flag_init_TSE    
-          
-        else if( flag_read_TSE == 1 )
-          begin
-            gen_address_AvMM_M_o_tv     <= bank_reg[0][21:14];
-            gen_read_AvMM_M_o_tv        <= 1;
-            gen_waitrequest_AvMM_S_o_tv <= 1;
-            bank_reg[0][22]             <= 0;
-            if( gen_waitrequest_AvMM_M_i == 0 )
-              begin
-                gen_waitrequest_AvMM_S_o_tv <= 0;
-                gen_read_AvMM_M_o_tv        <= 0;
-                bank_reg[1]                 <= gen_readdata_AvMM_M_i;
-                flag_read_TSE               <= 0;
-              end
-          end     // end read
-        else if( flag_write_TSE == 1 )
-          begin
-            gen_address_AvMM_M_o_tv     <= bank_reg[0][21:14];
-            gen_writedata_AvMM_M_o_tv   <= bank_reg[1];
-            gen_write_AvMM_M_o_tv       <= 1;
-            gen_waitrequest_AvMM_S_o_tv <= 1;
-            bank_reg[0][23]             <= 0;
-            if( gen_waitrequest_AvMM_M_i == 0 )
-              begin
-                gen_waitrequest_AvMM_S_o_tv <= 0;
-                flag_write_TSE              <= 0;
-                gen_write_AvMM_M_o_tv       <= 0;
-              end
-          end
-          
-      end
-  end
-  
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        flag_start_TSE       <= 0;
-        flag_start_read_TSE  <= 0;
-        flag_start_write_TSE <= 0;
-        bank_reg[0]          <= 0;
-        bank_reg[1]          <= 0;
-        bank_reg[2]          <= 0;
-        bank_reg[3]          <= 0;
-        
-        flagTest_ram         <= 0;
-      end
-    else
-      begin
-        
-        if ( bank_reg[0][24] == 1 )
-          flag_start_TSE <= 1;
-        if ( bank_reg[0][24] == 0 )
-          flag_start_TSE <= 0;
-        
-        if ( bank_reg[0][22] == 0 )
-              flag_start_read_TSE <= 0;
-        if ( bank_reg[0][23] == 0 )
-              flag_start_write_TSE <= 0;
-            
-        if ( bank_reg[0][22] == 1 )
-          flag_start_read_TSE <= 1;
-            
-        if ( bank_reg[0][23] == 1 )
-          flag_start_write_TSE <= 1;  
-          
-        flagTest_ram <= bank_reg[0];
-        //flagTest_ram <= cout_one_sec;
-          
-      end
-  end
-  */
 
 //Avalon-ST Source
 logic [7:0]gen_data_o_tv;
@@ -566,12 +382,15 @@ logic gen_valid_o_tv;
 logic gen_startofpacket_o_tv;
 logic gen_endofpacket_o_tv;
 
-logic flag_start_TX;
-logic flag_SOP;
+logic [31:0]temp_val_data_tx;
 logic [1:0]count_32to8;
 logic [10:0]size_tv;
 logic [10:0]count_end_tx;
 logic [10:0]size_frame;
+
+
+logic flag_start_TX;
+logic flag_SOP;
 logic [31:0]count_pack_work;
 
 logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
@@ -600,8 +419,315 @@ logic [1:0]count_queue;
 logic [10:0]value_rnd_1;
 logic [9:0]value_rnd_2;
 logic [9:0]value_rnd_3;
-   
+
+// автомат
+/*
+typedef enum logic [3:0] {IDLE_ST = 4'b1000,
+                          SOP     = 4'b1001,
+                          SEND    = 4'b1010,
+                          EOP     = 4'b1011,
+                          XXX_ST  = 'x    } state_e_ST;
+						  */
+                          
+//state_e_ST state_ST, next_ST;
+state_e_MM state_ST, next_ST;
+                          
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      state_ST <= IDLE_ST;
+    else
+      state_ST <= next_ST;
+  end
+  
+always_comb
+  begin
+    next_ST = XXX;
+    case (state_ST)
+      IDLE_ST:      if(( gen_reg.control[START_S_BIT] == 1 )&&(r_w_addr_tv_ST == 0))
+                      next_ST = SOP;
+                    else
+                      next_ST = IDLE_ST;
+
+      SOP:          if( gen_ready_i == 1 )
+                      next_ST = SEND;
+                    else
+                      next_ST = SOP;
+
+      SEND:         if(( gen_ready_i == 1 )&&(count_end_tx == size_frame))
+                      next_ST = EOP;
+                    else
+                      next_ST = SEND;
+                      
+      EOP:          if( gen_ready_i == 1 )
+                      next_ST = IDLE_ST;
+                    else
+                      next_ST = EOP;
+      
+      default:    next_ST = XXX;
+    endcase
+  end
+
+always_ff @(posedge clk_i)
+  begin
+    if(srst_i)
+      begin
+        gen_data_o_tv          <= 0;
+        gen_valid_o_tv         <= 0;
+        gen_startofpacket_o_tv <= 0;
+        gen_endofpacket_o_tv   <= 0;
+		
+		r_w_addr_tv_ST   <= 0;
+        
+        count_32to8      <= 0;
+        temp_val_data_tx <= 0;
+        size_tv          <= 0;
+		count_end_tx     <= 0;
+      end
+    else
+      begin
+        gen_data_o_tv          <= 0;
+        gen_valid_o_tv         <= 0;
+        gen_startofpacket_o_tv <= 0;
+        gen_endofpacket_o_tv   <= 0;
+        case (next_MM)
+          IDLE_ST:  begin
+                      
+					  if( gen_reg.control[START_S_BIT] == 1 )
+						r_w_addr_tv_ST <= 0;
+                      if(r_w_addr_tv_ST == 0)
+                        temp_val_data_tx <= q_tv;
+                      
+                    end
+          SOP:      begin
+                      
+					  
+					  
+                      gen_data_o_tv          <= temp_val_data_tx[7:0];
+                      gen_valid_o_tv         <= 1;
+                      gen_startofpacket_o_tv <= 1;
+                      count_32to8            <= 1;
+                      size_tv                <= 0;
+					  count_end_tx           <= count_end_tx + 1;
+                      
+                    end
+          SEND:     begin
+          
+                      gen_valid_o_tv <= 1;
+                      
+                      if(gen_ready_i == 1)
+                        begin
+                          if( count_32to8 == 0)
+                            gen_data_o_tv <= temp_val_data_tx[7:0];
+                          else if( count_32to8 == 1)
+						    begin
+                              gen_data_o_tv <= temp_val_data_tx[15:8];
+							  r_w_addr_tv_ST   <= (size_tv + 1);
+							end
+                          else if( count_32to8 == 2)
+                            gen_data_o_tv <= temp_val_data_tx[23:16];
+                          else if( count_32to8 == 3)
+                            gen_data_o_tv <= temp_val_data_tx[32:24];
+							
+						  count_end_tx <= count_end_tx + 1;
+						  count_32to8  <= count_32to8 + 1;
+                          if( count_32to8 == 3 )
+                            begin
+							  size_tv          <= size_tv + 1;
+							  temp_val_data_tx <= q_tv;
+							end
+
+                        end
+                    
+                    end
+          EOP:      begin
+                      
+                      gen_endofpacket_o_tv <= 1;
+                      count_32to8          <= 0;
+                      size_tv              <= 0;
+                      count_end_tx         <= 0;
+
+                    end
+        endcase
+      end //else @ff
+  end
+
+//size of frame
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      size_frame <= 60;
+    else
+      if( gen_reg.control[SIZE_PACK_BIT] == 0 )
+        if( gen_reg.control[13:3] != 0 )
+                size_frame <= gen_reg.control[13:3];              
+              else
+                size_frame <= 60;
+  end
+
+
+
+
+/*
+
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      begin
+        gen_data_o_tv          <= 0;
+        gen_valid_o_tv         <= 0;
+        gen_startofpacket_o_tv <= 0;
+        gen_endofpacket_o_tv   <= 0;
+        
+        count_32to8     <= 0;
+        flag_start_TX   <= 0;
+        size_tv         <= 5;
+        count_end_tx    <= 0;
+        flag_SOP        <= 0;
+        count_pack_work <= 0;
+        
+        flag_work_speed  <= 0;
+        work_speed       <= 0;
+        count_work_speed <= 0;
+        wait_speed       <= 0;
+        wait_speed_const <= 0;
+      end
+    else
+      begin
+        if(( flag_start_TX == 1 ) && ( flag_work_speed == 0 ))
+          begin
+            
+            if( flag_SOP == 0 )
+              begin
+                gen_startofpacket_o_tv <= 1;
+                gen_valid_o_tv         <= 1;
+                flag_SOP               <= 1;
+                gen_data_o_tv          <= bank_reg[5][7:0];
+                
+                count_32to8 <= count_32to8 + 1;
+                  if( count_32to8 == 3 )
+                    size_tv <= size_tv + 1;
+
+              end
+            if( flag_SOP == 1 )
+              if( gen_ready_i == 1 )
+                begin
+                
+                  gen_startofpacket_o_tv <= 0;
+                  
+                  if( count_32to8 == 0)
+                    gen_data_o_tv <= bank_reg[size_tv][7:0];
+                  else if( count_32to8 == 1)
+                    gen_data_o_tv <= bank_reg[size_tv][15:8];
+                  else if( count_32to8 == 2)
+                    gen_data_o_tv <= bank_reg[size_tv][23:16];
+                  else if( count_32to8 == 3)
+                    gen_data_o_tv <= bank_reg[size_tv][32:24];
+                  
+                  count_32to8  <= count_32to8 + 1;
+                  count_end_tx <= count_end_tx + 1;
+                  if( count_32to8 == 3 )
+                    size_tv <= size_tv + 1;
+                end
+            if(( count_end_tx == size_frame ) && ( gen_endofpacket_o_tv == 0 ))
+              begin
+                gen_endofpacket_o_tv <= 1;
+                count_32to8          <= 0;
+                size_tv              <= 5;
+                count_end_tx         <= 0;
+                if(( bank_reg[0][2] == 0 ) && ( bank_reg[2] != 0)) 
+                  count_pack_work      <= count_pack_work + 1;
+                
+                if(( (count_pack_work + 1) >= bank_reg[2]) && ( bank_reg[0][2] == 0 ))
+                  begin
+                    bank_reg[0][0]       <= 0;
+                    flag_start_TX        <= 0;
+                    count_pack_work      <= 0;
+                    flag_SOP             <= 0;
+                  end
+                else if(( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 ))
+                  begin
+                    bank_reg[0][0]       <= 0;
+                    flag_start_TX        <= 0;
+                    count_pack_work      <= 0;
+                    flag_SOP             <= 0;
+                  end
+                  
+              end
+            else if(( gen_endofpacket_o_tv == 1 ))
+              begin
+                if( gen_ready_i == 1 )
+                  begin
+                    gen_endofpacket_o_tv <= 0;
+                    gen_valid_o_tv       <= 0;
+                    flag_SOP             <= 0;
+                    
+                    if( count_work_speed != 0 )
+                      begin
+                        flag_work_speed <= 1;
+                      end
+                    
+                  end
+              end
+            
+            if((( count_pack_work == bank_reg[2]) && ( bank_reg[0][2] == 0 )) || (( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 )))
+              begin
+                count_work_speed     <= 0;
+                work_speed           <= 0;
+              end
+            else
+              begin
+                if( (work_speed + 1) < bank_reg[4][31:22] )
+                  work_speed <= work_speed + 1;
+                else if( bank_reg[4][31:22] < 1000 )
+                  begin
+                    work_speed       <= 0;
+                    count_work_speed <= count_work_speed + 1;
+                  end
+              end
+            
+          end
+        else
+          begin
+            
+            if ( bank_reg[0][0] == 1 )
+              begin
+                flag_start_TX   <= 1;
+
+              end
+          
+            if( gen_ready_i == 1 )
+              begin
+                gen_endofpacket_o_tv <= 0;
+                gen_valid_o_tv       <= 0;
+              end
+              
+            wait_speed_const <= 1000 - bank_reg[4][31:22];
+              
+            if(( flag_work_speed == 1 )&&( flag_start_TX == 1 ))              //count wait
+              begin
+                
+                if( (wait_speed + 1) < wait_speed_const )
+                  wait_speed <= wait_speed + 1;
+                else 
+                  begin
+                    count_work_speed <= count_work_speed - 1;
+                    wait_speed       <= 0;
+                    if( (count_work_speed - 1) == 0 )
+                      begin
+                        flag_work_speed <= 0;
+                      end
+                  end
+              end
+            else if(( flag_work_speed == 1 )&&( flag_start_TX == 0 ))
+              flag_work_speed <= 0;
+              
+          end //else
+      end
+    end
+ */
 //Avalon-ST Source
+/*
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
@@ -634,7 +760,7 @@ always_ff @( posedge clk_i )
       end
     else
       begin
-       /* if(( flag_start_TX == 1 ) && ( flag_work_speed == 0 ))
+        if(( flag_start_TX == 1 ) && ( flag_work_speed == 0 ))
           begin
             
             if( flag_SOP == 0 )
@@ -852,10 +978,11 @@ always_ff @( posedge clk_i )
               flag_work_speed <= 0;
               
           end //else
-         */ 
+        
       end
     end
-    
+	 */ 
+ /*   
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
@@ -874,7 +1001,7 @@ always_ff @( posedge clk_i )
       end
     else
       begin
-       /* 
+        
         count_rnd_start <= count_rnd_start + 1;
       
         if (( bank_reg[0][0] == 1 ) && ( flag_start_size == 0 ))
@@ -1031,10 +1158,10 @@ always_ff @( posedge clk_i )
             flag_count2     <= 0;
             flag_count3     <= 0;
           end
-        */
+        
       end
   end
-  
+  */
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
