@@ -93,7 +93,7 @@ simple_ram     #(
                 .q          (q_tv)
                 );
 
-/*
+
 typedef enum logic [2:0] {IDLE         = 3'b000,
                           WORK_REG     = 3'b001,
                           WORK_RAM     = 3'b010,
@@ -103,7 +103,7 @@ typedef enum logic [2:0] {IDLE         = 3'b000,
                           INIT_TSE_WR  = 3'b110,
                           INIT_TSE_CHK = 3'b111,
                           XXX      = 'x    } state_e_MM;
-						  
+/*						  
 						  
 						  typedef enum logic [3:0] {IDLE_ST = 4'b1000,
                           SOP     = 4'b1001,
@@ -111,7 +111,7 @@ typedef enum logic [2:0] {IDLE         = 3'b000,
                           EOP     = 4'b1011,
                           XXX_ST  = 'x    } state_e_ST;
 						  
-                          */
+                        
 typedef enum logic [3:0] {IDLE         = 4'b0000,
                           WORK_REG     = 4'b0001,
                           WORK_RAM     = 4'b0010,
@@ -126,7 +126,7 @@ typedef enum logic [3:0] {IDLE         = 4'b0000,
                           SEND    = 4'b1010,
                           EOP     = 4'b1011,
                           XXX      = 'x    } state_e_MM;
-						  
+	  */					  
                           
 state_e_MM state_MM, next_MM;
                           
@@ -421,16 +421,16 @@ logic [9:0]value_rnd_2;
 logic [9:0]value_rnd_3;
 
 // автомат
-/*
-typedef enum logic [3:0] {IDLE_ST = 4'b1000,
-                          SOP     = 4'b1001,
-                          SEND    = 4'b1010,
-                          EOP     = 4'b1011,
+
+typedef enum logic [1:0] {IDLE_ST = 2'b00,
+                          SOP     = 2'b01,
+                          SEND    = 2'b10,
+                          EOP     = 2'b11,
                           XXX_ST  = 'x    } state_e_ST;
-						  */
+						  
                           
-//state_e_ST state_ST, next_ST;
-state_e_MM state_ST, next_ST;
+state_e_ST state_ST, next_ST;
+//state_e_MM state_ST, next_ST;
                           
 always_ff @( posedge clk_i )
   begin
@@ -442,7 +442,7 @@ always_ff @( posedge clk_i )
   
 always_comb
   begin
-    next_ST = XXX;
+    next_ST = XXX_ST;
     case (state_ST)
       IDLE_ST:      if(( gen_reg.control[START_S_BIT] == 1 )&&(r_w_addr_tv_ST == 0))
                       next_ST = SOP;
@@ -464,7 +464,7 @@ always_comb
                     else
                       next_ST = EOP;
       
-      default:    next_ST = XXX;
+      default:    next_ST = XXX_ST;
     endcase
   end
 
@@ -490,7 +490,7 @@ always_ff @(posedge clk_i)
         gen_valid_o_tv         <= 0;
         gen_startofpacket_o_tv <= 0;
         gen_endofpacket_o_tv   <= 0;
-        case (next_MM)
+        case (next_ST)
           IDLE_ST:  begin
                       
 					  if( gen_reg.control[START_S_BIT] == 1 )
@@ -503,7 +503,8 @@ always_ff @(posedge clk_i)
                       
 					  
 					  
-                      gen_data_o_tv          <= temp_val_data_tx[7:0];
+                      //gen_data_o_tv          <= temp_val_data_tx[7:0];
+					  gen_data_o_tv          <= q_tv[7:0];
                       gen_valid_o_tv         <= 1;
                       gen_startofpacket_o_tv <= 1;
                       count_32to8            <= 1;
