@@ -59,9 +59,10 @@ parameter DATA_WIDTH    = 32;
 parameter ADDR_WIDTH    = 9;  
 
 parameter TSE_REG_ADR_COMCONF   = 8'h2;
-parameter TSE_REG_VAL_COMCONF   = 32'h2008;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
+parameter TSE_REG_VAL_RESET     = 32'h2008;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
+parameter TSE_REG_VAL_RESET_COR = 32'h8;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 parameter TSE_REG_VAL_2_COMCONF = 32'h900001b;   //0,1,3,4,24,27
-parameter TSE_REG_VAL_3_COMCONF = 32'h9000018;  //correct init TSE
+//parameter TSE_REG_VAL_3_COMCONF = 32'h9000018;  //correct init TSE
 
 //Avalon-MM gen Slave
 logic [31:0]gen_readdata_AvMM_S_o_tv;
@@ -87,7 +88,7 @@ simple_ram     #(
                 .clk        (clk_i),
                 .we         (we_tv),
                 .data       (gen_writedata_AvMM_S_i),
-				.r_w_addr   ((gen_reg.control[START_S_BIT] == 1) ? r_w_addr_tv_ST : r_w_addr_tv ),
+                .r_w_addr   ((gen_reg.control[START_S_BIT] == 1) ? r_w_addr_tv_ST : r_w_addr_tv ),
                 //.r_w_addr   (r_w_addr_tv),
                 
                 .q          (q_tv)
@@ -103,14 +104,14 @@ typedef enum logic [2:0] {IDLE         = 3'b000,
                           INIT_TSE_WR  = 3'b110,
                           INIT_TSE_CHK = 3'b111,
                           XXX      = 'x    } state_e_MM;
-/*						  
-						  
-						  typedef enum logic [3:0] {IDLE_ST = 4'b1000,
+/*                        
+                          
+                          typedef enum logic [3:0] {IDLE_ST = 4'b1000,
                           SOP     = 4'b1001,
                           SEND    = 4'b1010,
                           EOP     = 4'b1011,
                           XXX_ST  = 'x    } state_e_ST;
-						  
+                          
                         
 typedef enum logic [3:0] {IDLE         = 4'b0000,
                           WORK_REG     = 4'b0001,
@@ -120,13 +121,13 @@ typedef enum logic [3:0] {IDLE         = 4'b0000,
                           INIT_TSE_RD  = 4'b0101,
                           INIT_TSE_WR  = 4'b0110,
                           INIT_TSE_CHK = 4'b0111,
-						  
-						  IDLE_ST = 4'b1000,
+                          
+                          IDLE_ST = 4'b1000,
                           SOP     = 4'b1001,
                           SEND    = 4'b1010,
                           EOP     = 4'b1011,
                           XXX      = 'x    } state_e_MM;
-	  */					  
+      */                      
                           
 state_e_MM state_MM, next_MM;
                           
@@ -175,10 +176,11 @@ always_comb
                     else
                       next_MM = INIT_TSE_ST;
       INIT_TSE_RD : if( gen_waitrequest_AvMM_M_i == 0 )
-                      if( gen_readdata_AvMM_M_i == TSE_REG_VAL_COMCONF )
+                      if( gen_readdata_AvMM_M_i == TSE_REG_VAL_RESET_COR )
                         next_MM = INIT_TSE_WR;
-                          else
-                        next_MM = INIT_TSE_ST;
+                      else
+                        next_MM = INIT_TSE_RD;
+                        //next_MM = INIT_TSE_ST;
                     else
                       next_MM = INIT_TSE_RD;
       INIT_TSE_WR : if( gen_waitrequest_AvMM_M_i == 0 )
@@ -219,30 +221,30 @@ always_ff @(posedge clk_i)
         
         gen_write_AvMM_M_o_tv         <= 0;
         gen_read_AvMM_M_o_tv          <= 0;
-		
-		//r_w_addr_tv                   <= 0;
+        
+        //r_w_addr_tv                   <= 0;
         
         case (next_MM)
           IDLE:     begin
           
                       if( gen_reg.control[INIT_BIT] == 0 )
-					    begin
-						  if(( gen_write_AvMM_S_i == 1 ) && (gen_waitrequest_AvMM_S_o_tv != 0))
-							begin
-							  gen_waitrequest_AvMM_S_o_tv <= 0;
-							end
-						  if(( gen_read_AvMM_S_i == 1 )&&( gen_readdatavalid_AvMM_S_o_tv != 1 ))
-							begin
-							  gen_waitrequest_AvMM_S_o_tv   <= 0;
-							  gen_readdata_AvMM_S_o_tv      <= VAL_NOT_FOUND;
-							  gen_readdatavalid_AvMM_S_o_tv <= 1;
-							end
+                        begin
+                          if(( gen_write_AvMM_S_i == 1 ) && (gen_waitrequest_AvMM_S_o_tv != 0))
+                            begin
+                              gen_waitrequest_AvMM_S_o_tv <= 0;
+                            end
+                          if(( gen_read_AvMM_S_i == 1 )&&( gen_readdatavalid_AvMM_S_o_tv != 1 ))
+                            begin
+                              gen_waitrequest_AvMM_S_o_tv   <= 0;
+                              gen_readdata_AvMM_S_o_tv      <= VAL_NOT_FOUND;
+                              gen_readdatavalid_AvMM_S_o_tv <= 1;
+                            end
                         end
-						
+                        
                       if( gen_waitrequest_AvMM_M_i == 0 )
                         begin
                           gen_read_AvMM_M_o_tv      <= 0;
-                          if( gen_readdata_AvMM_M_i == TSE_REG_VAL_3_COMCONF )
+                          if( gen_readdata_AvMM_M_i == TSE_REG_VAL_2_COMCONF )
                             gen_reg.control[INIT_BIT] <= 0;
                         end
                       
@@ -343,7 +345,7 @@ always_ff @(posedge clk_i)
         INIT_TSE_ST:begin
                       
                       gen_address_AvMM_M_o_tv   <= TSE_REG_ADR_COMCONF;
-                      gen_writedata_AvMM_M_o_tv <= TSE_REG_VAL_COMCONF;   
+                      gen_writedata_AvMM_M_o_tv <= TSE_REG_VAL_RESET;   
                       gen_write_AvMM_M_o_tv     <= 1;
                       
                     end
@@ -427,7 +429,7 @@ typedef enum logic [1:0] {IDLE_ST = 2'b00,
                           SEND    = 2'b10,
                           EOP     = 2'b11,
                           XXX_ST  = 'x    } state_e_ST;
-						  
+                          
                           
 state_e_ST state_ST, next_ST;
 //state_e_MM state_ST, next_ST;
@@ -444,17 +446,19 @@ always_comb
   begin
     next_ST = XXX_ST;
     case (state_ST)
-      IDLE_ST:      if(( gen_reg.control[START_S_BIT] == 1 )&&(r_w_addr_tv_ST == 0))
+      IDLE_ST:      if(gen_reg.control[START_S_BIT] == 1 )
                       next_ST = SOP;
                     else
                       next_ST = IDLE_ST;
 
-      SOP:          if( gen_ready_i == 1 )
+      SOP:          if(( gen_ready_i == 1 )&&(gen_startofpacket_o_tv == 1))
                       next_ST = SEND;
+                    else if(r_w_addr_tv_ST == 5)
+                      next_ST = IDLE_ST;
                     else
                       next_ST = SOP;
 
-      SEND:         if(( gen_ready_i == 1 )&&(count_end_tx == size_frame))
+      SEND:         if(( gen_ready_i == 1 )&&((count_end_tx + 1 ) == size_frame))
                       next_ST = EOP;
                     else
                       next_ST = SEND;
@@ -476,40 +480,47 @@ always_ff @(posedge clk_i)
         gen_valid_o_tv         <= 0;
         gen_startofpacket_o_tv <= 0;
         gen_endofpacket_o_tv   <= 0;
-		
-		r_w_addr_tv_ST   <= 0;
         
+        r_w_addr_tv_ST   <= 0;
         count_32to8      <= 0;
         temp_val_data_tx <= 0;
         size_tv          <= 0;
-		count_end_tx     <= 0;
+        count_end_tx     <= 0;
       end
     else
       begin
-        gen_data_o_tv          <= 0;
-        gen_valid_o_tv         <= 0;
         gen_startofpacket_o_tv <= 0;
-        gen_endofpacket_o_tv   <= 0;
         case (next_ST)
           IDLE_ST:  begin
                       
-					  if( gen_reg.control[START_S_BIT] == 1 )
-						r_w_addr_tv_ST <= 0;
-                      if(r_w_addr_tv_ST == 0)
-                        temp_val_data_tx <= q_tv;
+                      r_w_addr_tv_ST <= 1;
+                      gen_data_o_tv  <= 0;
+                      gen_valid_o_tv <= 0;
+                      gen_endofpacket_o_tv   <= 0;
+                      
+                      count_32to8          <= 0;
+                      size_tv              <= 0;
+                      count_end_tx         <= 0;
                       
                     end
           SOP:      begin
                       
-					  
-					  
-                      //gen_data_o_tv          <= temp_val_data_tx[7:0];
-					  gen_data_o_tv          <= q_tv[7:0];
-                      gen_valid_o_tv         <= 1;
-                      gen_startofpacket_o_tv <= 1;
-                      count_32to8            <= 1;
-                      size_tv                <= 0;
-					  count_end_tx           <= count_end_tx + 1;
+                      if( gen_reg.control[START_S_BIT] == 1 )
+                        r_w_addr_tv_ST <= 0;
+                      else
+                        r_w_addr_tv_ST <= 5;
+                        
+                      if(r_w_addr_tv_ST == 0)
+                        count_end_tx <= 1;
+                      if(count_end_tx == 1)
+                        begin
+                          temp_val_data_tx       <= q_tv;
+                          gen_data_o_tv          <= q_tv[7:0];
+                          gen_valid_o_tv         <= 1;
+                          gen_startofpacket_o_tv <= 1;
+                          count_32to8            <= 1;
+                          size_tv                <= 0;
+                        end
                       
                     end
           SEND:     begin
@@ -521,32 +532,56 @@ always_ff @(posedge clk_i)
                           if( count_32to8 == 0)
                             gen_data_o_tv <= temp_val_data_tx[7:0];
                           else if( count_32to8 == 1)
-						    begin
+                            begin
                               gen_data_o_tv <= temp_val_data_tx[15:8];
-							  r_w_addr_tv_ST   <= (size_tv + 1);
-							end
+                              r_w_addr_tv_ST   <= (size_tv + 1);
+                            end
                           else if( count_32to8 == 2)
                             gen_data_o_tv <= temp_val_data_tx[23:16];
                           else if( count_32to8 == 3)
                             gen_data_o_tv <= temp_val_data_tx[32:24];
-							
-						  count_end_tx <= count_end_tx + 1;
-						  count_32to8  <= count_32to8 + 1;
+                            
+                          count_end_tx <= count_end_tx + 1;
+                          count_32to8  <= count_32to8 + 1;
                           if( count_32to8 == 3 )
                             begin
-							  size_tv          <= size_tv + 1;
-							  temp_val_data_tx <= q_tv;
-							end
+                              size_tv          <= size_tv + 1;
+                              temp_val_data_tx <= q_tv;
+                            end
 
                         end
                     
                     end
           EOP:      begin
                       
-                      gen_endofpacket_o_tv <= 1;
-                      count_32to8          <= 0;
-                      size_tv              <= 0;
-                      count_end_tx         <= 0;
+                      gen_valid_o_tv <= 1;
+                      
+                      if(gen_ready_i == 1)
+                        begin
+                          if( count_32to8 == 0)
+                            gen_data_o_tv <= temp_val_data_tx[7:0];
+                          else if( count_32to8 == 1)
+                            begin
+                              gen_data_o_tv <= temp_val_data_tx[15:8];
+                              r_w_addr_tv_ST   <= (size_tv + 1);
+                            end
+                          else if( count_32to8 == 2)
+                            gen_data_o_tv <= temp_val_data_tx[23:16];
+                          else if( count_32to8 == 3)
+                            gen_data_o_tv <= temp_val_data_tx[32:24];
+                            
+                          count_end_tx <= count_end_tx + 1;
+                          count_32to8  <= count_32to8 + 1;
+                          if( count_32to8 == 3 )
+                            begin
+                              size_tv          <= size_tv + 1;
+                              temp_val_data_tx <= q_tv;
+                            end
+                            
+                        if((count_end_tx + 1 )  == size_frame)
+                          gen_endofpacket_o_tv <= 1;
+
+                        end
 
                     end
         endcase
@@ -560,7 +595,7 @@ always_ff @( posedge clk_i )
       size_frame <= 60;
     else
       if( gen_reg.control[SIZE_PACK_BIT] == 0 )
-        if( gen_reg.control[13:3] != 0 )
+        if( gen_reg.control[13:3] >= 60 )
                 size_frame <= gen_reg.control[13:3];              
               else
                 size_frame <= 60;
@@ -982,7 +1017,7 @@ always_ff @( posedge clk_i )
         
       end
     end
-	 */ 
+     */ 
  /*   
 always_ff @( posedge clk_i )
   begin

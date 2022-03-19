@@ -75,6 +75,7 @@ if [regexp {/tb/dut/data_tx_data_0} [find signals /tb/dut/data_tx_data_0]]      
 if [regexp {/tb/dut/data_tx_sop_0} [find signals /tb/dut/data_tx_sop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_sop_0}
 if [regexp {/tb/dut/data_tx_eop_0} [find signals /tb/dut/data_tx_eop_0]]            {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_eop_0}
 if [regexp {/tb/dut/data_tx_ready_0} [find signals /tb/dut/data_tx_ready_0]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_ready_0}
+if [regexp {/tb/dut_gen/gen_ready_i} [find signals /tb/dut_gen/gen_ready_i]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut_gen/gen_ready_i}
 if [regexp {/tb/dut/data_tx_valid_0} [find signals /tb/dut/data_tx_valid_0]]        {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_valid_0}
 if [regexp {/tb/dut/data_tx_error_0} [find signals /tb/dut/data_tx_error_0]]         {add wave -noupdate -format Logic -radix hexadecimal /tb/dut/data_tx_error_0}
 
