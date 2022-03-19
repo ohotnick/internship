@@ -54,6 +54,7 @@ parameter VAL_NOT_FOUND = 32'h404;
 parameter INIT_BIT      = 24;
 parameter START_S_BIT   = 0;
 parameter SIZE_PACK_BIT = 1;
+parameter PACK_OR_SEC   = 2;
 
 parameter DATA_WIDTH    = 32;
 parameter ADDR_WIDTH    = 9;  
@@ -389,11 +390,12 @@ logic [1:0]count_32to8;
 logic [10:0]size_tv;
 logic [10:0]count_end_tx;
 logic [10:0]size_frame;
+logic [31:0]count_pack_work;
+
 
 
 logic flag_start_TX;
 logic flag_SOP;
-logic [31:0]count_pack_work;
 
 logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
 logic [31:0] count_time_work;
@@ -486,6 +488,7 @@ always_ff @(posedge clk_i)
         temp_val_data_tx <= 0;
         size_tv          <= 0;
         count_end_tx     <= 0;
+		count_pack_work  <= 0;
       end
     else
       begin
@@ -493,14 +496,16 @@ always_ff @(posedge clk_i)
         case (next_ST)
           IDLE_ST:  begin
                       
-                      r_w_addr_tv_ST <= 1;
-                      gen_data_o_tv  <= 0;
-                      gen_valid_o_tv <= 0;
+                      r_w_addr_tv_ST         <= 1;
+                      gen_data_o_tv          <= 0;
+                      gen_valid_o_tv         <= 0;
                       gen_endofpacket_o_tv   <= 0;
                       
                       count_32to8          <= 0;
                       size_tv              <= 0;
                       count_end_tx         <= 0;
+					  if(gen_reg.control[START_S_BIT] == 0)
+					    count_pack_work      <= 0;
                       
                     end
           SOP:      begin
@@ -550,6 +555,27 @@ always_ff @(posedge clk_i)
                             end
 
                         end
+						
+					  if(( count_end_tx + 2 ) == size_frame )
+						  begin
+							if( gen_reg.control[PACK_OR_SEC] == 0 )
+							  begin
+							    count_pack_work <= count_pack_work + 1;
+							    if((count_pack_work + 1) >= gen_reg.count_pack_work)
+							      begin
+								    gen_reg.control[START_S_BIT] <= 0;
+								    //count_pack_work      <= 0;
+							      end
+						      end
+							/*else if(( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 ))
+							  begin
+								bank_reg[0][0]       <= 0;
+								flag_start_TX        <= 0;
+								count_pack_work      <= 0;
+								flag_SOP             <= 0;
+							  end*/
+							  
+						  end
                     
                     end
           EOP:      begin

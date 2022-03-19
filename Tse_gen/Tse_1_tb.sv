@@ -320,7 +320,12 @@ initial
     address_MM_read   = 10'h202;                          //next addr TSE  0x02 read
     read_MM (data_read_MM, address_MM_read);
     
-    data_send_MM = 32'h0000029;
+	data_send_MM = 32'h0000005;							//Value of pack
+	//data_send_MM = 32'h0000000;	
+    address_MM   = 1;   
+    send_MM (data_send_MM, address_MM);
+	
+    data_send_MM = 32'h0000029;								//start TX
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
