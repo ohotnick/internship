@@ -325,11 +325,16 @@ initial
     address_MM   = 1;   
     send_MM (data_send_MM, address_MM);
 	
-    data_send_MM = 32'h0000029;								//start TX
+	data_send_MM = 32'h0000002;							//Work time
+    address_MM   = 2;   
+    send_MM (data_send_MM, address_MM);
+	
+    //data_send_MM = 32'h0000029;								//start TX коллво пак
+	data_send_MM = 32'h000002d;								//start TX  секундах
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
-    #4000;
+    #400000;
     $stop;
     
     $display( " before. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );

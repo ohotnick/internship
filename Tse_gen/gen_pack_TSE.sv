@@ -61,9 +61,10 @@ parameter ADDR_WIDTH    = 9;
 
 parameter TSE_REG_ADR_COMCONF   = 8'h2;
 parameter TSE_REG_VAL_RESET     = 32'h2008;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
-parameter TSE_REG_VAL_RESET_COR = 32'h8;      //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
+parameter TSE_REG_VAL_RESET_COR = 32'h8;         //0)Tx=0, 1)Rx=0, 3)ETH_SPEED=1, 13)SW_RESET=1
 parameter TSE_REG_VAL_2_COMCONF = 32'h900001b;   //0,1,3,4,24,27
-//parameter TSE_REG_VAL_3_COMCONF = 32'h9000018;  //correct init TSE
+
+parameter GEN_VAL_PART_OF_SEC   = 32'h30d4;      //125Mhz 1/10000 sec
 
 //Avalon-MM gen Slave
 logic [31:0]gen_readdata_AvMM_S_o_tv;
@@ -392,13 +393,16 @@ logic [10:0]count_end_tx;
 logic [10:0]size_frame;
 logic [31:0]count_pack_work;
 
+logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
+logic [31:0] count_time_work;
+
+
 
 
 logic flag_start_TX;
 logic flag_SOP;
 
-logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
-logic [31:0] count_time_work;
+
 
 logic flag_work_speed;
 logic [9:0]work_speed;
@@ -564,16 +568,12 @@ always_ff @(posedge clk_i)
 							    if((count_pack_work + 1) >= gen_reg.count_pack_work)
 							      begin
 								    gen_reg.control[START_S_BIT] <= 0;
-								    //count_pack_work      <= 0;
 							      end
 						      end
-							/*else if(( count_time_work >= bank_reg[3]) && ( bank_reg[0][2] == 1 ))
+							else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
 							  begin
-								bank_reg[0][0]       <= 0;
-								flag_start_TX        <= 0;
-								count_pack_work      <= 0;
-								flag_SOP             <= 0;
-							  end*/
+								gen_reg.control[START_S_BIT] <= 0;
+							  end
 							  
 						  end
                     
@@ -627,6 +627,34 @@ always_ff @( posedge clk_i )
                 size_frame <= 60;
   end
 
+//time_work							  
+always_ff @( posedge clk_i )
+  begin
+    if(srst_i)
+      begin
+        cout_one_sec    <= 0;
+        count_time_work <= 0;
+      end
+    else
+      begin
+      
+        if( gen_reg.control[START_S_BIT] == 0 )
+          begin
+            cout_one_sec    <= 0;
+            count_time_work <= 0;
+          end
+        else if( cout_one_sec >= GEN_VAL_PART_OF_SEC )
+          begin
+            cout_one_sec    <= 0;
+            count_time_work <= count_time_work + 1;
+          end
+        else if( gen_reg.control[START_S_BIT] == 1 )
+          begin
+            cout_one_sec <= cout_one_sec + 1;
+          end
+        
+      end
+  end							  
 
 
 
@@ -1224,33 +1252,7 @@ always_ff @( posedge clk_i )
       end
   end
   */
-always_ff @( posedge clk_i )
-  begin
-    if(srst_i)
-      begin
-        cout_one_sec    <= 0;
-        count_time_work <= 0;
-      end
-    else
-      begin
-      
-        if( flag_start_TX == 0 )
-          begin
-            cout_one_sec    <= 0;
-            count_time_work <= 0;
-          end
-        else if( cout_one_sec >= 32'h30d4 )
-          begin
-            cout_one_sec    <= 0;
-            count_time_work <= count_time_work + 1;
-          end
-        else if( flag_start_TX == 1 )
-          begin
-            cout_one_sec <= cout_one_sec + 1;
-          end
-        
-      end
-  end 
+ 
 
   
 assign gen_readdata_AvMM_S_o      = gen_readdata_AvMM_S_o_tv;
