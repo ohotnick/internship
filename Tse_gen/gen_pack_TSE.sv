@@ -492,7 +492,7 @@ always_ff @(posedge clk_i)
         temp_val_data_tx <= 0;
         size_tv          <= 0;
         count_end_tx     <= 0;
-		count_pack_work  <= 0;
+        count_pack_work  <= 0;
       end
     else
       begin
@@ -508,8 +508,8 @@ always_ff @(posedge clk_i)
                       count_32to8          <= 0;
                       size_tv              <= 0;
                       count_end_tx         <= 0;
-					  if(gen_reg.control[START_S_BIT] == 0)
-					    count_pack_work      <= 0;
+                      if(gen_reg.control[START_S_BIT] == 0)
+                        count_pack_work      <= 0;
                       
                     end
           SOP:      begin
@@ -559,23 +559,23 @@ always_ff @(posedge clk_i)
                             end
 
                         end
-						
-					  if(( count_end_tx + 2 ) == size_frame )
-						  begin
-							if( gen_reg.control[PACK_OR_SEC] == 0 )
-							  begin
-							    count_pack_work <= count_pack_work + 1;
-							    if((count_pack_work + 1) >= gen_reg.count_pack_work)
-							      begin
-								    gen_reg.control[START_S_BIT] <= 0;
-							      end
-						      end
-							else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
-							  begin
-								gen_reg.control[START_S_BIT] <= 0;
-							  end
-							  
-						  end
+                        
+                      if(( count_end_tx + 2 ) == size_frame )
+                          begin
+                            if( gen_reg.control[PACK_OR_SEC] == 0 )
+                              begin
+                                count_pack_work <= count_pack_work + 1;
+                                if((count_pack_work + 1) >= gen_reg.count_pack_work)
+                                  begin
+                                    gen_reg.control[START_S_BIT] <= 0;
+                                  end
+                              end
+                            else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
+                              begin
+                                gen_reg.control[START_S_BIT] <= 0;
+                              end
+                              
+                          end
                     
                     end
           EOP:      begin
@@ -627,7 +627,7 @@ always_ff @( posedge clk_i )
                 size_frame <= 60;
   end
 
-//time_work							  
+//time_work                           
 always_ff @( posedge clk_i )
   begin
     if(srst_i)
@@ -654,7 +654,7 @@ always_ff @( posedge clk_i )
           end
         
       end
-  end							  
+  end                             
 
 
 
