@@ -392,11 +392,15 @@ logic [10:0]size_tv;
 logic [10:0]count_end_tx;
 logic [10:0]size_frame;
 logic [31:0]count_pack_work;
+logic flag_startwork_tx;
 
 logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
 logic [31:0] count_time_work;
 
-
+logic [9:0]work_speed;
+logic [9:0]wait_speed;
+logic [9:0]wait_speed_const;
+logic [10:0]count_work_speed;
 
 
 logic flag_start_TX;
@@ -405,10 +409,8 @@ logic flag_SOP;
 
 
 logic flag_work_speed;
-logic [9:0]work_speed;
-logic [9:0]wait_speed;
-logic [9:0]wait_speed_const;
-logic [10:0]count_work_speed;
+
+
 
 logic flag_start_size;
 logic [1:0]count_rnd_start;
@@ -452,12 +454,12 @@ always_comb
   begin
     next_ST = XXX_ST;
     case (state_ST)
-      IDLE_ST:      if(gen_reg.control[START_S_BIT] == 1 )
+      IDLE_ST:      if((gen_reg.control[START_S_BIT] == 1 )&&(count_work_speed == 0))
                       next_ST = SOP;
                     else
                       next_ST = IDLE_ST;
 
-      SOP:          if(( gen_ready_i == 1 )&&(gen_startofpacket_o_tv == 1))
+      SOP:          if(( gen_ready_i == 1 )&&(gen_startofpacket_o_tv == 1)&&(gen_reg.control[START_S_BIT] != 0))
                       next_ST = SEND;
                     else if(r_w_addr_tv_ST == 5)
                       next_ST = IDLE_ST;
@@ -469,8 +471,12 @@ always_comb
                     else
                       next_ST = SEND;
                       
-      EOP:          if( gen_ready_i == 1 )
-                      next_ST = IDLE_ST;
+      EOP:          if(count_work_speed > 0)
+					  next_ST = IDLE_ST;
+					else if((flag_startwork_tx == 1)&&( gen_ready_i == 1 ))
+                      next_ST = SOP;
+					else if( gen_ready_i == 1 )
+					  next_ST = IDLE_ST;
                     else
                       next_ST = EOP;
       
@@ -493,6 +499,7 @@ always_ff @(posedge clk_i)
         size_tv          <= 0;
         count_end_tx     <= 0;
         count_pack_work  <= 0;
+		flag_startwork_tx <= 0;
       end
     else
       begin
@@ -530,7 +537,21 @@ always_ff @(posedge clk_i)
                           count_32to8            <= 1;
                           size_tv                <= 0;
                         end
+					  else if(gen_reg.control[START_S_BIT] == 0)
+					    flag_startwork_tx <= 0;
+					  else if(flag_startwork_tx == 1)
+					    begin
+						  count_end_tx           <= 1;
+						  temp_val_data_tx       <= q_tv;
+                          gen_data_o_tv          <= q_tv[7:0];
+                          gen_valid_o_tv         <= 1;
+                          gen_startofpacket_o_tv <= 1;
+                          count_32to8            <= 1;
+                          size_tv                <= 0;
+						end
                       
+					  gen_endofpacket_o_tv   <= 0;
+					  
                     end
           SEND:     begin
           
@@ -557,6 +578,9 @@ always_ff @(posedge clk_i)
                               size_tv          <= size_tv + 1;
                               temp_val_data_tx <= q_tv;
                             end
+							
+						  if(( count_end_tx + 2 ) == size_frame )
+						    r_w_addr_tv_ST   <= 0;
 
                         end
                         
@@ -589,7 +613,7 @@ always_ff @(posedge clk_i)
                           else if( count_32to8 == 1)
                             begin
                               gen_data_o_tv <= temp_val_data_tx[15:8];
-                              r_w_addr_tv_ST   <= (size_tv + 1);
+                              //r_w_addr_tv_ST   <= (size_tv + 1);
                             end
                           else if( count_32to8 == 2)
                             gen_data_o_tv <= temp_val_data_tx[23:16];
@@ -603,9 +627,13 @@ always_ff @(posedge clk_i)
                               size_tv          <= size_tv + 1;
                               temp_val_data_tx <= q_tv;
                             end
+							
+						  r_w_addr_tv_ST   <= 0;
                             
-                        if((count_end_tx + 1 )  == size_frame)
-                          gen_endofpacket_o_tv <= 1;
+                          if((count_end_tx + 1 )  == size_frame)
+                            gen_endofpacket_o_tv <= 1;
+							
+						  flag_startwork_tx <= 1;
 
                         end
 
@@ -656,7 +684,44 @@ always_ff @( posedge clk_i )
       end
   end                             
 
-
+//speed
+always_ff @( posedge clk_i )
+  begin
+	if(srst_i)
+      begin
+        work_speed       <= 0;
+	    wait_speed       <= 0;
+        wait_speed_const <= 0;
+        count_work_speed <= 0;
+      end
+    else
+	  begin
+	  
+	    wait_speed_const <= 1000 - gen_reg.rand_val_speed[31:22];
+	  
+	    if(gen_valid_o_tv == 1)
+		  begin
+			if( (work_speed + 1) < gen_reg.rand_val_speed[31:22] )
+			  work_speed <= work_speed + 1;
+			else if( gen_reg.rand_val_speed[31:22] < 1000 )
+			  begin
+				work_speed       <= 0;
+				count_work_speed <= count_work_speed + 1;
+			  end
+		  end
+		else if((gen_valid_o_tv == 0)&&(gen_reg.control[START_S_BIT] == 1)&&(count_work_speed > 0))
+		  begin
+		    if((wait_speed + 1) < wait_speed_const)
+              wait_speed <= wait_speed + 1;
+            else 
+              begin
+                count_work_speed <= count_work_speed - 1;
+                wait_speed       <= 0;
+              end
+		  end
+		  
+      end
+  end
 
 /*
 

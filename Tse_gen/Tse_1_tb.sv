@@ -314,23 +314,27 @@ initial
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
-    //flag_test_Aval_ST_ready = 0;
+    //flag_test_Aval_ST_ready = 1;
     
     Init_frame();
     address_MM_read   = 10'h202;                          //next addr TSE  0x02 read
     read_MM (data_read_MM, address_MM_read);
     
-    data_send_MM = 32'h0000005;                         //Value of pack
-    //data_send_MM = 32'h0000000;   
+	data_send_MM = 32'h0000005;							//Value of pack
+	//data_send_MM = 32'h0000000;	
     address_MM   = 1;   
     send_MM (data_send_MM, address_MM);
-    
-    data_send_MM = 32'h0000002;                         //Work time
+	
+	data_send_MM = 32'h0000002;							//Work time
     address_MM   = 2;   
     send_MM (data_send_MM, address_MM);
-    
-    //data_send_MM = 32'h0000029;                               //start TX коллво пак
-    data_send_MM = 32'h000002d;                             //start TX  секундах
+	
+	data_send_MM = 32'h7d000000;							//speed 500
+    address_MM   = 3;   
+    send_MM (data_send_MM, address_MM);
+	
+    //data_send_MM = 32'h0000029;								//start TX коллво пак
+	data_send_MM = 32'h000002d;								//start TX  секундах
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
