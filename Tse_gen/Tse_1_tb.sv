@@ -193,7 +193,7 @@ parameter DATA_WIDTH    = 32;
 parameter ADDR_WIDTH    = 9; 
 logic     [DATA_WIDTH-1:0] ram_temp[(2**ADDR_WIDTH-1):0];
 
-task Init_frame();
+task Init_pack();
 
   logic   [31:0]data_ram_frame;
   logic   [9:0]address_ram_frame;
@@ -316,7 +316,7 @@ initial
     
     //flag_test_Aval_ST_ready = 1;
     
-    Init_frame();
+    Init_pack();
     address_MM_read   = 10'h202;                          //next addr TSE  0x02 read
     read_MM (data_read_MM, address_MM_read);
     
@@ -329,16 +329,24 @@ initial
     address_MM   = 2;   
     send_MM (data_send_MM, address_MM);
     
-    data_send_MM = 32'h7d000000;                            //speed 500
+    //data_send_MM = 32'h7d000000;                          //speed 500
+    //address_MM   = 3;   
+    //send_MM (data_send_MM, address_MM);
+    
+    data_send_MM = 32'h7d02803c;                            //min 60, max 80, speed 500
     address_MM   = 3;   
     send_MM (data_send_MM, address_MM);
     
-    //data_send_MM = 32'h0000029;                               //start TX коллво пак
-    data_send_MM = 32'h000002d;                             //start TX  секундах
+    data_send_MM = 32'h0000029;                             //start TX коллво пак
+    data_send_MM = 32'h0000281;                             //start TX коллво пак 80 пакетов
+    data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
+    //data_send_MM = 32'h000002d;                               //start TX  секундах
+    data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
-    #400000;
+    //#400000;
+    #40000;
     $stop;
     
     $display( " before. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
@@ -426,7 +434,7 @@ initial
         else if ( readdata_gen_tse == 32'h9000018 )
           begin
             $display( "Success init TSE,  %d ns ",$time  );
-            //Init_frame();
+            //Init_pack();
             //flag_end_init_ram = 1;
             //$display( "End init Gen ram, flag_end_init_ram = %d,  %d ns ",flag_end_init_ram,$time  );
             break;

@@ -110,10 +110,10 @@ if [regexp {/tb/dut_gen/count_queue} [find signals /tb/dut_gen/count_queue]]    
 if [regexp {/tb/dut_gen/value_rnd_1} [find signals /tb/dut_gen/value_rnd_1]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_1}
 if [regexp {/tb/dut_gen/value_rnd_2} [find signals /tb/dut_gen/value_rnd_2]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_2}
 if [regexp {/tb/dut_gen/value_rnd_3} [find signals /tb/dut_gen/value_rnd_3]]        {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/value_rnd_3}
-if [regexp {/tb/dut_gen/count_rnd_1_a} [find signals /tb/dut_gen/count_rnd_1_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_1_a}
-if [regexp {/tb/dut_gen/count_rnd_2_a} [find signals /tb/dut_gen/count_rnd_2_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_2_a}
-if [regexp {/tb/dut_gen/count_rnd_3_a} [find signals /tb/dut_gen/count_rnd_3_a]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/count_rnd_3_a}
-if [regexp {/tb/dut_gen/size_frame} [find signals /tb/dut_gen/size_frame]]          {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/size_frame}
+if [regexp {/tb/dut_gen/rand_range_1_count} [find signals /tb/dut_gen/rand_range_1_count]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/rand_range_1_count}
+if [regexp {/tb/dut_gen/rand_range_2_count} [find signals /tb/dut_gen/rand_range_2_count]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/rand_range_2_count}
+if [regexp {/tb/dut_gen/rand_range_3_count} [find signals /tb/dut_gen/rand_range_3_count]]    {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/rand_range_3_count}
+if [regexp {/tb/dut_gen/size_pack} [find signals /tb/dut_gen/size_pack]]          {add wave -noupdate -format Logic -radix decimal /tb/dut_gen/size_pack}
 
 
 add wave -noupdate -divider -height 40 {ALL WIRE}
