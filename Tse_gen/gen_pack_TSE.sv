@@ -441,7 +441,7 @@ always_comb
                     else
                       next_ST = SEND;
                       
-      EOP:          if(count_work_speed > 0)
+      EOP:          if((count_work_speed > 0)&&((gen_ready_i == 1)))
                       next_ST = IDLE_ST;
                     else if((flag_startwork_tx == 1)&&( gen_ready_i == 1 ))
                       next_ST = SOP;
@@ -477,7 +477,11 @@ always_ff @(posedge clk_i)
         case (next_ST)
           IDLE_ST:  begin
                       
-                      r_w_addr_tv_ST         <= 1;
+                      if(flag_startwork_tx == 0)
+                        r_w_addr_tv_ST       <= 1;
+                      else
+                        r_w_addr_tv_ST       <= 0;
+                      
                       gen_data_o_tv          <= 0;
                       gen_valid_o_tv         <= 0;
                       gen_endofpacket_o_tv   <= 0;
@@ -553,23 +557,23 @@ always_ff @(posedge clk_i)
                             r_w_addr_tv_ST   <= 0;
 
                         end
-                        
-                      if(( count_end_tx + 2 ) == size_pack )
-                          begin
-                            if( gen_reg.control[PACK_OR_SEC] == 0 )
-                              begin
-                                count_pack_work <= count_pack_work + 1;
-                                if((count_pack_work + 1) >= gen_reg.count_pack_work)
-                                  begin
-                                    gen_reg.control[START_S_BIT] <= 0;
-                                  end
-                              end
-                            else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
-                              begin
-                                gen_reg.control[START_S_BIT] <= 0;
-                              end
-                              
-                          end
+                      
+                      if(gen_ready_i == 1)                    
+                        if(( count_end_tx + 2 ) == size_pack )
+                            begin
+                              if( gen_reg.control[PACK_OR_SEC] == 0 )
+                                begin
+                                  count_pack_work <= count_pack_work + 1;
+                                  if((count_pack_work + 1) >= gen_reg.count_pack_work)
+                                    begin
+                                      gen_reg.control[START_S_BIT] <= 0;
+                                    end
+                                end
+                              else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
+                                begin
+                                  gen_reg.control[START_S_BIT] <= 0;
+                                end
+                            end
                     
                     end
           EOP:      begin
@@ -655,25 +659,34 @@ always_ff @( posedge clk_i )
       
         wait_speed_const <= 1000 - gen_reg.rand_val_speed[31:22];
       
-        if(gen_valid_o_tv == 1)
+        if(gen_reg.control[START_S_BIT] == 1)
           begin
-            if( (work_speed + 1) < gen_reg.rand_val_speed[31:22] )
-              work_speed <= work_speed + 1;
-            else if( gen_reg.rand_val_speed[31:22] < 1000 )
+            if(gen_valid_o_tv == 1)
               begin
-                work_speed       <= 0;
-                count_work_speed <= count_work_speed + 1;
+                if( (work_speed + 1) < gen_reg.rand_val_speed[31:22] )
+                  work_speed <= work_speed + 1;
+                else if( gen_reg.rand_val_speed[31:22] < 1000 )
+                  begin
+                    work_speed       <= 0;
+                    count_work_speed <= count_work_speed + 1;
+                  end
+              end
+            else if((gen_valid_o_tv == 0)&&(gen_reg.control[START_S_BIT] == 1)&&(count_work_speed > 0))
+              begin
+                if((wait_speed + 1) < wait_speed_const)
+                  wait_speed <= wait_speed + 1;
+                else 
+                  begin
+                    count_work_speed <= count_work_speed - 1;
+                    wait_speed       <= 0;
+                  end
               end
           end
-        else if((gen_valid_o_tv == 0)&&(gen_reg.control[START_S_BIT] == 1)&&(count_work_speed > 0))
+        else
           begin
-            if((wait_speed + 1) < wait_speed_const)
-              wait_speed <= wait_speed + 1;
-            else 
-              begin
-                count_work_speed <= count_work_speed - 1;
-                wait_speed       <= 0;
-              end
+            work_speed       <= 0;
+            count_work_speed <= 0;
+            wait_speed       <= 0;
           end
           
       end

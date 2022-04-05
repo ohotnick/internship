@@ -1,9 +1,39 @@
 `timescale 1 ns / 10 ps
-
 module tb ;
 
-
 parameter REG_ADDR_WIDTH = 8;
+parameter DATA_ADD_VALUE = 32'h100000;
+
+parameter DATA_WIDTH    = 32;
+parameter ADDR_WIDTH    = 9;
+
+//Register range
+parameter FIRST_ADDR_REG_00   = 10'h0;
+parameter MIDDLE_ADDR_REG_02  = 10'h2;
+parameter LAST_ADDR_REG_03    = 10'h3;
+//Empty range
+parameter NEXT_AFTER_LAST_04  = 10'h4;
+parameter BEFORE_FIRST_RAM_0E = 10'he;
+//Ram range
+parameter FIRST_RAM_00_GENERAL_10  = 10'h10;
+parameter MID_RAM_F0_GENERAL_100   = 10'h100;
+parameter LASR_RAM_16D_GENERAL_17D = 10'h17d; 
+//Empty range
+parameter NEXT_AFTER_LAST_17E  = 10'h17e;
+parameter BEFORE_FIRST_TSE_1FF = 10'h1ff; 
+//TSE register range
+parameter FIRST_TSE_00_GENERAL_200 = 10'h200;
+parameter NEXT_TSE_01_GENERAL_201  = 10'h201;
+parameter NEXT_TSE_02_GENERAL_202  = 10'h202;
+
+parameter INIT_TSE_WORD_01000000 = 32'h01000000;
+//Test const
+parameter PRINT_ALL_RX    = 1;
+parameter NO_PRINT_ALL_RX = 0;
+//TEST 1
+parameter TEST_1_80_BYTE_CONST_PACK = 32'h0000281;
+parameter TEST_1_NUMBER_PACK_5      = 32'h0000005;
+
 
 //  Register Interface
 //  ------------------
@@ -42,27 +72,26 @@ logic gm_tx_rx_err_0;
 logic [7:0]gm_tx_rx_d_0;
 
 //Avalon-MM slave
-   logic [9:0]address_AvMM_S_i;
-   logic write_AvMM_S_i;
-   logic [31:0]writedata_AvMM_S_i;
-   logic read_AvMM_S_i;
+logic [9:0]address_AvMM_S_i;
+logic write_AvMM_S_i;
+logic [31:0]writedata_AvMM_S_i;
+logic read_AvMM_S_i;
 
-   logic [31:0]readdata_AvMM_S_o;
-   logic readdatavalid_AvMM_S_o;
-   logic waitrequest_AvMM_S_o;
+logic [31:0]readdata_AvMM_S_o;
+logic readdatavalid_AvMM_S_o;
+logic waitrequest_AvMM_S_o;
    
- logic [4:0]data_rx_error_0;
- logic data_rx_valid_0;
- logic data_rx_eop_0;
-/*      
-always //50
-   begin
-   reg_clk <= 1'b 1;    
-   #( 10 ); 
-   reg_clk <= 1'b 0;    
-   #( 10 ); 
-   end
- */  
+logic [4:0]data_rx_error_0;
+logic data_rx_valid_0;
+logic data_rx_eop_0;
+logic data_rx_sop_0;
+logic [7:0]data_rx_data_0;
+
+//Test flags
+logic start_test_pack        = 0;
+logic flag_print_all_rx_data = 0;
+logic flag_read_reg_contr_byte = 0;
+
 always //125
    begin
    reg_clk <= 1'b 1;    
@@ -71,6 +100,7 @@ always //125
    #( 4 ); 
    end
 
+/*
 logic tx_clk;
    
 always    //125
@@ -80,7 +110,7 @@ always    //125
    tx_clk <= 1'b 0;    
    #( 4 ); 
    end
-        
+ */       
 initial
   begin
     @( posedge reg_clk )
@@ -88,7 +118,7 @@ initial
     @( posedge reg_clk )
       reset <= 1'b0;
   end
-  
+/*
 initial
   begin
     reg_rd      <= 0;
@@ -104,7 +134,7 @@ initial
       
       
   end
-  
+ */ 
 logic [31:0]read_data_global; 
   
 task send_MM ( logic [31:0]data_send_MM, logic [9:0]address_MM );
@@ -128,8 +158,6 @@ task send_MM ( logic [31:0]data_send_MM, logic [9:0]address_MM );
       
     end
     
-    
-  
   $display( "Send data_MM[%d] = %h, %d ns ", address_MM , data_send_MM,$time  );
   
 endtask
@@ -168,12 +196,12 @@ task Check_Aval_MM(logic [9:0]address_MM_check);
   
   read_MM (present_data, address_MM_check);
   present_data     = read_data_global;
-  read_data_global = read_data_global + 32'h100000;
+  read_data_global = read_data_global + DATA_ADD_VALUE;
   
   send_MM (read_data_global, address_MM_check);
   read_MM (present_data, address_MM_check);
   
-  if(read_data_global == (present_data + 32'h100000))
+  if(read_data_global == (present_data + DATA_ADD_VALUE))
     $display( "Check good adr = %h,  %d ns ", address_MM_check ,$time  );
   else
     begin
@@ -188,9 +216,7 @@ task Check_Aval_MM(logic [9:0]address_MM_check);
   send_MM (0, address_MM_check);
   
 endtask
-
-parameter DATA_WIDTH    = 32;
-parameter ADDR_WIDTH    = 9; 
+ 
 logic     [DATA_WIDTH-1:0] ram_temp[(2**ADDR_WIDTH-1):0];
 
 task Init_pack();
@@ -237,7 +263,7 @@ task Init_pack();
 
 endtask
   
-logic flag_end_init_ram;
+//logic flag_end_init_ram;
 logic flag_test_Aval_ST_ready;
 logic test_ready_ST;
   
@@ -259,64 +285,68 @@ initial
     #50;
     $display( "Check Avalon-MM address 0-3  %d ns ",$time  );
     
-    address_MM   = 10'h0;                              //first addr reg
+    //Register range
+    address_MM   = FIRST_ADDR_REG_00;                         //first addr reg
+    Check_Aval_MM(address_MM);
+    address_MM   = MIDDLE_ADDR_REG_02;                        //middle addr reg
+    Check_Aval_MM(address_MM);
+    address_MM   = LAST_ADDR_REG_03;                          //last addr reg
     Check_Aval_MM(address_MM);
     
-    address_MM   = 10'h2;                              //middle addr reg
+    //Empty range
+    address_MM   = NEXT_AFTER_LAST_04;                        //next after last addr reg
+    Check_Aval_MM(address_MM);
+    address_MM   = BEFORE_FIRST_RAM_0E;                       //before first addr ram
     Check_Aval_MM(address_MM);
     
-    address_MM   = 10'h3;                              //last addr reg
-    Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h4;                              //next after last addr reg
-    Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'he;                              //before first addr ram
-    Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h10;                             //init start ram val
+    $display( "Check Avalon-MM address 10-17D  %d ns ",$time  );
+    //Ram range
+    address_MM   = FIRST_RAM_00_GENERAL_10;                   //init start ram val
     data_send_MM = 32'h0;
     send_MM (data_send_MM, address_MM);
-    
-    address_MM   = 10'h10;                             //first addr ram
+    address_MM   = FIRST_RAM_00_GENERAL_10;                   //first addr ram
     Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h100;                            // init start ram val
+    address_MM   = MID_RAM_F0_GENERAL_100;                    //init start ram val
     data_send_MM = 32'h0;
     send_MM (data_send_MM, address_MM);
-    
-    address_MM   = 10'h100;                             //some middle addr ram
+    address_MM   = MID_RAM_F0_GENERAL_100;                    //some middle addr ram
     Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h17d;                             // init start ram val
+    address_MM   = LASR_RAM_16D_GENERAL_17D;                  //init start ram val
     data_send_MM = 32'h0;
     send_MM (data_send_MM, address_MM);
-    
-    address_MM   = 10'h17d;                             //last addr ram
+    address_MM   = LASR_RAM_16D_GENERAL_17D;                  //last addr ram
     Check_Aval_MM(address_MM);
     
-    address_MM   = 10'h17e;                             //next after last addr ram
+    //Empty range
+    address_MM   = NEXT_AFTER_LAST_17E;                       //next after last addr ram
+    Check_Aval_MM(address_MM);
+    address_MM   = BEFORE_FIRST_TSE_1FF;                      //before first addr TSE
     Check_Aval_MM(address_MM);
     
-    address_MM   = 10'h1ff;                              //before first addr TSE
+    $display( "Check Avalon-MM address 200,201,202  %d ns ",$time  );
+    //TSE register range
+    address_MM      = FIRST_TSE_00_GENERAL_200;               //first addr TSE  0x00
     Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h200;                              //first addr TSE  0x00
+    address_MM      = NEXT_TSE_01_GENERAL_201;                //next addr TSE   0x01
     Check_Aval_MM(address_MM);
-    
-    address_MM   = 10'h201;                              //next addr TSE   0x01
-    Check_Aval_MM(address_MM);
-    
-    address_MM_read   = 10'h202;                          //next addr TSE  0x02
+    address_MM_read = NEXT_TSE_02_GENERAL_202;                //next addr TSE  0x02
     read_MM (data_read_MM, address_MM_read);
     
-    data_send_MM = 32'h1000000;
+    //INIT TSE
+    data_send_MM = INIT_TSE_WORD_01000000;
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
     
+    //INIT RAM
+    Init_pack();
+    
     //flag_test_Aval_ST_ready = 1;
     
-    Init_pack();
+    start_test_pack        = 1;
+    //flag_print_all_rx_data = PRINT_ALL_RX;
+    flag_print_all_rx_data = NO_PRINT_ALL_RX;
+    
+    
     address_MM_read   = 10'h202;                          //next addr TSE  0x02 read
     read_MM (data_read_MM, address_MM_read);
     
@@ -333,22 +363,42 @@ initial
     //address_MM   = 3;   
     //send_MM (data_send_MM, address_MM);
     
-    data_send_MM = 32'h7d02803c;                            //min 60, max 80, speed 500
+    data_send_MM = 32'h7d02803e;                            //min 62, max 80, speed 500
     address_MM   = 3;   
     send_MM (data_send_MM, address_MM);
     
     data_send_MM = 32'h0000029;                             //start TX коллво пак
     data_send_MM = 32'h0000281;                             //start TX коллво пак 80 пакетов
-    data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
+    //data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
     //data_send_MM = 32'h000002d;                               //start TX  секундах
-    data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
+    //data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
     address_MM   = 0;   
     send_MM (data_send_MM, address_MM);
+    /*
+    forever
+      begin
+        @(posedge reg_clk);
+        if(start_test_pack == 0)
+          break;
+      end
     
+    #500;
+    $display( " Send NEXT TX %d ns " ,$time  ); 
+    start_test_pack = 1;
+    
+    data_send_MM = 32'h0000029;                             //start TX коллво пак
+    data_send_MM = 32'h0000281;                             //start TX коллво пак 80 пакетов
+    //data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
+    //data_send_MM = 32'h000002d;                               //start TX  секундах
+    //data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
+    address_MM   = 0;   
+    send_MM (data_send_MM, address_MM);
+    */
     //#400000;
     #40000;
+    //#20000;
     $stop;
-    
+    /*
     $display( " before. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
     forever
       @(posedge tx_clk)
@@ -360,7 +410,7 @@ initial
             $display( " after. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
             break;
           end
-          
+         
     //test send second pack
           
     forever
@@ -399,17 +449,12 @@ initial
                 break;
               end
           end
-
+*/ 
   
   end
 
-logic tb_flag_init_TSE;
- 
 initial
   begin
-  
-    flag_end_init_ram = 0;  
-    tb_flag_init_TSE  = 0;
     
     test_ready_ST     = 0;
     
@@ -423,26 +468,295 @@ initial
           test_ready_ST <= 1'b0;
       end
     
+  end
+
+//Test Pack vs RAM 
+bit [7:0] test_queue [$];
+integer pack_size   = 0;
+integer i_pack_size = 0;
+integer i_ram_size  = 0;
+logic pack_check    = 0;
+
+initial
+  begin
+  
+  logic [7:0] result;
+  logic [7:0] ref_result;
+  //TEST 1
+  integer value_pack = 0;
+  
     forever
       begin
-        @(posedge reg_clk)
-        if (( writedata_gen_tse == 32'h2008 ) & (tb_flag_init_TSE == 0 ))
+    
+        @(posedge reg_clk);
+        if(start_test_pack == 1)
           begin
-            $display( "Start init TSE,  %d ns ",$time  );
-            tb_flag_init_TSE = 1;
+            //$display( " Start test size pack,  %d ns " ,$time  );
+            if(data_rx_valid_0 == 1)
+              begin
+                //$display( " DATA: data_rx_data_0 = %h, i_ram_size = %d,  %d ns ",data_rx_data_0, i_ram_size ,$time  );
+                test_queue.push_back(data_rx_data_0);           
+                
+                if( data_rx_sop_0 == 1 )
+                  pack_size = 1;
+                else if(( data_rx_sop_0 == 0 ) && ( data_rx_eop_0 == 0 ))
+                  pack_size = pack_size + 1;
+                else if( data_rx_eop_0 == 1 )
+                  begin
+                    pack_size   = pack_size + 1;
+                    i_pack_size = 0;
+                    i_ram_size  = 0;
+                    pack_check  = 0;
+                    
+                    //TEST 1. 1)const size pack. 2)5 pack
+                    if(pack_size == TEST_1_80_BYTE_CONST_PACK[13:3])
+                      begin
+                        value_pack = value_pack + 1;
+                        if(value_pack == TEST_1_NUMBER_PACK_5)
+                          begin
+                            $display( " TEST 1: Value send pack = %d,  %d ns ",value_pack ,$time  );
+                            flag_read_reg_contr_byte = 1;
+                          end
+                      end
+                    //END TEST 1
+                    
+                    $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
+                      forever
+                        begin
+
+                          if( i_pack_size%4 == 0 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][7:0];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 1 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][15:8];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 2 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][23:16];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 3 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][31:24];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                            
+                          i_pack_size = i_pack_size + 1;
+                          i_ram_size  = i_pack_size/4;
+                          
+                          if(i_pack_size >= pack_size)
+                            begin
+                              if( pack_check == 0 )
+                                $display("Pack check good! Size = %d , %d ns", pack_size,$time  );
+                              else if( pack_check == 0 )
+                                $display("No pack check good!!! Size = %d , %d ns", pack_size,$time  );
+                              break;
+                            end
+          
+                        end
+                  end
+              end
           end
-        else if ( readdata_gen_tse == 32'h9000018 )
+        else if(start_test_pack == 0)
           begin
-            $display( "Success init TSE,  %d ns ",$time  );
-            //Init_pack();
-            //flag_end_init_ram = 1;
-            //$display( "End init Gen ram, flag_end_init_ram = %d,  %d ns ",flag_end_init_ram,$time  );
-            break;
+            //TEST 1
+            value_pack = 0;
+            //END TEST 1
+          end
+      end
+  
+  end
+  
+initial
+  begin
+  
+  logic [7:0] result;
+  logic [7:0] ref_result;
+  //TEST READY
+  integer value_pack = 0;
+  
+    forever
+      begin
+    
+        @(posedge reg_clk);
+        if(flag_test_Aval_ST_ready == 1)
+          begin
+            //$display( " Start test size pack,  %d ns " ,$time  );
+            if((valid_aval == 1)&&(test_ready_ST == 1))
+              begin
+                //$display( " DATA: data_rx_data_0 = %h, i_ram_size = %d,  %d ns ",data_rx_data_0, i_ram_size ,$time  );
+                test_queue.push_back(data_aval);            
+                
+                if( sop_aval == 1 )
+                  pack_size = 1;
+                else if(( sop_aval == 0 ) && ( eop_aval == 0 ))
+                  pack_size = pack_size + 1;
+                else if( eop_aval == 1 )
+                  begin
+                    pack_size   = pack_size + 1;
+                    i_pack_size = 0;
+                    i_ram_size  = 0;
+                    pack_check  = 0;
+                    
+                    //TEST READY. 
+                    if(pack_size == TEST_1_80_BYTE_CONST_PACK[13:3])
+                      begin
+                        value_pack = value_pack + 1;
+                        if(value_pack == TEST_1_NUMBER_PACK_5)
+                          begin
+                            $display( " TEST READY: Value send pack = %d,  %d ns ",value_pack ,$time  );
+                            flag_read_reg_contr_byte = 1;
+                          end
+                      end
+                    //END TEST READY
+                    
+                    $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
+                      forever
+                        begin
+
+                          if( i_pack_size%4 == 0 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][7:0];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 1 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][15:8];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 2 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][23:16];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 3 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][31:24];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                            
+                          i_pack_size = i_pack_size + 1;
+                          i_ram_size  = i_pack_size/4;
+                          
+                          if(i_pack_size >= pack_size)
+                            begin
+                              if( pack_check == 0 )
+                                $display("Pack check good! Size = %d , %d ns", pack_size,$time  );
+                              else if( pack_check == 0 )
+                                $display("No pack check good!!! Size = %d , %d ns", pack_size,$time  );
+                              break;
+                            end
+          
+                        end
+                  end
+              end
+          end
+        else if(flag_test_Aval_ST_ready == 0)
+          begin
+            //TEST READY
+            value_pack = 0;
+            //END TEST READY
+          end
+      end
+  
+  end
+  
+initial
+  begin
+    
+    
+    forever
+      begin
+        
+        @(posedge reg_clk);
+        if( flag_read_reg_contr_byte == 1 )
+          begin
+            flag_read_reg_contr_byte = 0;
+            read_MM ( 1, 0);
+            
+            if(start_test_pack == 1)
+              begin
+                if(( readdata_AvMM_S_o == 32'h0000280 )&&(pack_check == 0))
+                  $display( " TEST 1: GOOD. End TX/RX.,  %d ns " ,$time  );
+                else
+                  $display( " TEST 1: ERR,  %d ns " ,$time  );
+                start_test_pack          = 0;
+                flag_test_Aval_ST_ready  = 1;
+                send_MM (32'h0000281, 0);
+              end
+            else
+              begin
+                if(( readdata_AvMM_S_o == 32'h0000280 )&&(pack_check == 0))
+                  $display( " TEST READY: GOOD. End TX.,  %d ns " ,$time  );
+                else
+                  $display( " TEST READY: ERR,  %d ns " ,$time  );
+                flag_test_Aval_ST_ready  = 0;
+              end
             
           end
       end
+    
   end
- 
  
 // $<RTL_CORE_INSTANCE>
 Tse_1 dut
@@ -465,10 +779,10 @@ Tse_1 dut
    .magic_sleep_n_0   ( ),
    .xon_gen_0         ( ),
    .data_rx_eop_0     ( data_rx_eop_0 ),
-   .data_rx_data_0    ( ),
+   .data_rx_data_0    ( data_rx_data_0 ),
    .data_rx_valid_0   ( data_rx_valid_0 ),
    .data_rx_error_0   ( data_rx_error_0 ),
-   .data_rx_sop_0     ( ),
+   .data_rx_sop_0     ( data_rx_sop_0 ),
    .data_rx_ready_0   ( 1 ),
    .pkt_class_valid_0 ( ),
    .pkt_class_data_0  ( ),
