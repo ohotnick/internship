@@ -30,13 +30,24 @@ parameter INIT_TSE_WORD_01000000 = 32'h01000000;
 //Test const
 parameter PRINT_ALL_RX    = 1;
 parameter NO_PRINT_ALL_RX = 0;
+
+parameter VALUE_OF_PACK_5          = 32'h0000005;
+parameter REGISTER_VALUE_PACK_0x01 = 1;
+parameter VALUE_OF_TIME_2          = 32'h0000002;
+parameter REGISTER_TIME_PACK_0x02  = 2;
+parameter VAL_RND_62_80_SPEED_500  = 32'h7d02803e;
+parameter REG_RAND_SPEED_PACK_0x03 = 3;
+parameter START_TX_PACKTX_SIZE_80  = 32'h0000281;
+parameter REG_CONTL_0x00           = 0;
+parameter START_TX_SEC_RAND_SIZE   = 32'h000002f;
 //TEST 1
 parameter TEST_1_80_BYTE_CONST_PACK = 32'h0000281;
 parameter TEST_1_NUMBER_PACK_5      = 32'h0000005;
+//TEST 3
+parameter GEN_VAL_PART_OF_SEC   = 32'h30d4;      //125Mhz 1/10000 sec
 
 
-//  Register Interface
-//  ------------------
+// ------------------
 
 logic     reg_clk;                        //  25MHz Host Interface Clock
 logic     reg_rd;                         //  Register Read Strobe
@@ -88,9 +99,19 @@ logic data_rx_sop_0;
 logic [7:0]data_rx_data_0;
 
 //Test flags
-logic start_test_pack        = 0;
-logic flag_print_all_rx_data = 0;
+logic start_test_pack          = 0;
+logic flag_print_all_rx_data   = 0;
 logic flag_read_reg_contr_byte = 0;
+//TEST 3
+logic start_test_3_pack        = 0;
+logic flag_start_time_count    = 0;
+logic flag_test_time           = 0;
+integer start_time_pack        = 0;
+integer end_time_pack          = 0;
+integer work_time_pack         = 0;
+integer value_pack_TEST_3      = 0;
+logic [31:0]array_of_size_rand_pack [(2**10)-1:0];
+integer check_not_repeats      = 0;
 
 always //125
    begin
@@ -99,18 +120,7 @@ always //125
    reg_clk <= 1'b 0;    
    #( 4 ); 
    end
-
-/*
-logic tx_clk;
-   
-always    //125
-   begin
-   tx_clk <= 1'b 1;    
-   #( 4 ); 
-   tx_clk <= 1'b 0;    
-   #( 4 ); 
-   end
- */       
+      
 initial
   begin
     @( posedge reg_clk )
@@ -118,23 +128,7 @@ initial
     @( posedge reg_clk )
       reset <= 1'b0;
   end
-/*
-initial
-  begin
-    reg_rd      <= 0;
-    reg_wr      <= 0;
-    reg_data_in <= 32'h2008;
-  
-    #( 50 )
-      reg_rd   <= 1'h 1;
-      reg_addr <= 8'h 2;
-      
-    @( negedge waitrequest_gen_tse )
-      reg_rd   <= 1'h 0;
-      
-      
-  end
- */ 
+
 logic [31:0]read_data_global; 
   
 task send_MM ( logic [31:0]data_send_MM, logic [9:0]address_MM );
@@ -238,32 +232,10 @@ task Init_pack();
         break;
     end
 
-  /*
-  //send number of pack
-  address_ram_frame  = 2;
-  data_ram_frame     = 32'ha;
-  send_MM (data_ram_frame, address_ram_frame);
-  //send sec
-  address_ram_frame  = 3;
-  data_ram_frame     = 32'h2;
-  send_MM (data_ram_frame, address_ram_frame);
-  //send speed
-  address_ram_frame  = 4;
-  //data_ram_frame     = 32'hfa000000;                //1000
-  //data_ram_frame     = 32'h7d000000;                //500
-  //data_ram_frame     = 32'h7d03483c;                //500 3483c:105-60
-  //data_ram_frame     = 32'h7d02e03c;                //500 :92-60
-  data_ram_frame     = 32'h7d02e03e;                //500 :92-62
-  //data_ram_frame     = 32'h7d01e03c;                //500 :60-60
-  send_MM (data_ram_frame, address_ram_frame);
-  
-  // 60-61:60,61/ 60-62:60,61,62/ 60-63:60,61,62,63
-  */
   $display( "Success init frame,  %d ns ",$time  );
 
 endtask
-  
-//logic flag_end_init_ram;
+
 logic flag_test_Aval_ST_ready;
 logic test_ready_ST;
   
@@ -340,116 +312,50 @@ initial
     //INIT RAM
     Init_pack();
     
-    //flag_test_Aval_ST_ready = 1;
-    
-    start_test_pack        = 1;
     //flag_print_all_rx_data = PRINT_ALL_RX;
     flag_print_all_rx_data = NO_PRINT_ALL_RX;
-    
     
     address_MM_read   = 10'h202;                          //next addr TSE  0x02 read
     read_MM (data_read_MM, address_MM_read);
     
-    data_send_MM = 32'h0000005;                         //Value of pack
-    //data_send_MM = 32'h0000000;   
-    address_MM   = 1;   
+    data_send_MM = VALUE_OF_PACK_5;                         //Value of pack 
+    address_MM   = REGISTER_VALUE_PACK_0x01;   
     send_MM (data_send_MM, address_MM);
     
-    data_send_MM = 32'h0000002;                         //Work time
-    address_MM   = 2;   
+    data_send_MM = VALUE_OF_TIME_2;                         //Work time
+    address_MM   = REGISTER_TIME_PACK_0x02;   
     send_MM (data_send_MM, address_MM);
     
-    //data_send_MM = 32'h7d000000;                          //speed 500
-    //address_MM   = 3;   
-    //send_MM (data_send_MM, address_MM);
-    
-    data_send_MM = 32'h7d02803e;                            //min 62, max 80, speed 500
-    address_MM   = 3;   
+    data_send_MM = VAL_RND_62_80_SPEED_500;                //min 62, max 80, speed 500
+    address_MM   = REG_RAND_SPEED_PACK_0x03;   
     send_MM (data_send_MM, address_MM);
     
-    data_send_MM = 32'h0000029;                             //start TX коллво пак
-    data_send_MM = 32'h0000281;                             //start TX коллво пак 80 пакетов
-    //data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
-    //data_send_MM = 32'h000002d;                               //start TX  секундах
-    //data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
-    address_MM   = 0;   
+    #500;
+    $display( " Start TX %d ns " ,$time  ); 
+    start_test_pack = 1;
+    
+    data_send_MM = START_TX_PACKTX_SIZE_80;                             //start TX коллво пак 80 пакетов
+    address_MM   = REG_CONTL_0x00;   
     send_MM (data_send_MM, address_MM);
-    /*
+    
+    #5000;
+    
     forever
       begin
         @(posedge reg_clk);
-        if(start_test_pack == 0)
+        if(flag_test_Aval_ST_ready == 0)
           break;
       end
     
     #500;
     $display( " Send NEXT TX %d ns " ,$time  ); 
-    start_test_pack = 1;
+    start_test_3_pack = 1;
     
-    data_send_MM = 32'h0000029;                             //start TX коллво пак
-    data_send_MM = 32'h0000281;                             //start TX коллво пак 80 пакетов
-    //data_send_MM = 32'h0000283;                             //start TX коллво случ число пак
-    //data_send_MM = 32'h000002d;                               //start TX  секундах
-    //data_send_MM = 32'h000002f;                             //start TX  секундах случ диап
-    address_MM   = 0;   
+    data_send_MM = START_TX_SEC_RAND_SIZE;                             //start TX  секундах случ диап
+    address_MM   = REG_CONTL_0x00;   
     send_MM (data_send_MM, address_MM);
-    */
-    //#400000;
-    #40000;
-    //#20000;
+    #400000;
     $stop;
-    /*
-    $display( " before. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
-    forever
-      @(posedge tx_clk)
-        if( flag_end_init_ram == 1 )
-          begin
-            data_send_MM = 32'h 0000251;
-            address_MM   = 0;   
-            send_MM (data_send_MM, address_MM);
-            $display( " after. flag_end_init_ram = %d,  %d ns ",flag_end_init_ram ,$time  );
-            break;
-          end
-         
-    //test send second pack
-          
-    forever
-      @(posedge tx_clk)
-        if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
-          begin
-            //data_send_MM = 32'h4e8000;
-            address_MM_read = 0;
-            read_MM (data_read_MM, address_MM_read);
-            if( readdata_AvMM_S_o == 32'h250 )
-              begin
-                //$stop;
-                data_send_MM = 32'h257;
-                address_MM   = 0;   
-                send_MM (data_send_MM, address_MM);
-                $display( " Send frame again,  %d ns ",$time  );
-                break;
-              end
-          end
-    
-    forever
-      @(posedge tx_clk)
-        //if(( data_rx_error_0 == 2 ) & ( data_rx_valid_0 == 1 ) & ( data_rx_eop_0 == 1 ))
-        if(( eop_aval == 1 ) & ( valid_aval == 1 ) & ( ready_aval == 1 ))
-          begin
-            //data_send_MM = 32'h4e8000;
-            address_MM_read = 0;
-            read_MM (data_read_MM, address_MM_read);
-            if( readdata_AvMM_S_o == 32'h256 )
-              begin
-                $stop;
-                data_send_MM = 32'h251;
-                address_MM   = 0;   
-                send_MM (data_send_MM, address_MM);
-                $display( " Send frame again,  %d ns ",$time  );
-                break;
-              end
-          end
-*/ 
   
   end
 
@@ -477,12 +383,12 @@ integer i_pack_size = 0;
 integer i_ram_size  = 0;
 logic pack_check    = 0;
 
+//TEST 1
 initial
   begin
   
   logic [7:0] result;
   logic [7:0] ref_result;
-  //TEST 1
   integer value_pack = 0;
   
     forever
@@ -495,7 +401,7 @@ initial
             if(data_rx_valid_0 == 1)
               begin
                 //$display( " DATA: data_rx_data_0 = %h, i_ram_size = %d,  %d ns ",data_rx_data_0, i_ram_size ,$time  );
-                test_queue.push_back(data_rx_data_0);           
+                test_queue.push_back(data_rx_data_0);               
                 
                 if( data_rx_sop_0 == 1 )
                   pack_size = 1;
@@ -520,7 +426,8 @@ initial
                       end
                     //END TEST 1
                     
-                    $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
+                    if( flag_print_all_rx_data == PRINT_ALL_RX )
+                      $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
                       forever
                         begin
 
@@ -591,20 +498,19 @@ initial
           end
         else if(start_test_pack == 0)
           begin
-            //TEST 1
+
             value_pack = 0;
             //END TEST 1
           end
-      end
-  
+      end 
   end
-  
+
+//TEST READY 
 initial
   begin
   
   logic [7:0] result;
   logic [7:0] ref_result;
-  //TEST READY
   integer value_pack = 0;
   
     forever
@@ -642,7 +548,8 @@ initial
                       end
                     //END TEST READY
                     
-                    $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
+                    if( flag_print_all_rx_data == PRINT_ALL_RX )
+                      $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
                       forever
                         begin
 
@@ -721,6 +628,7 @@ initial
   
   end
   
+//TEST 1 and TEST READY 
 initial
   begin
     
@@ -758,6 +666,212 @@ initial
     
   end
  
+  
+//TEST 3
+initial
+  begin
+  
+  logic [7:0] result;
+  logic [7:0] ref_result;
+  integer i = 0; 
+  
+  //TEST 3
+  integer value_pack = 0;
+  value_pack_TEST_3  = 0;
+  check_not_repeats  = 0;
+  
+  //clean array
+  forever
+    begin
+      array_of_size_rand_pack[i] = 0;
+      i= i + 1;
+      if(i >= 1600)
+        break;
+    end
+  
+    forever
+      begin
+    
+        @(posedge reg_clk);
+        if(start_test_3_pack == 1)
+          begin
+            //$display( " Start test size pack,  %d ns " ,$time  );
+            if(data_rx_valid_0 == 1)
+              begin
+                //$display( " DATA: data_rx_data_0 = %h, i_ram_size = %d,  %d ns ",data_rx_data_0, i_ram_size ,$time  );
+                test_queue.push_back(data_rx_data_0); 
+                work_time_pack = work_time_pack + 1;                
+                
+                if( data_rx_sop_0 == 1 )
+                  begin
+                    pack_size             = 1;
+                    if(flag_start_time_count == 0)
+                      begin
+                        $display( " START COUNT TIME !!!!!!  %d ns " ,$time );
+                        start_time_pack = $time;
+                      end
+                    flag_start_time_count = 1;
+                  end
+                else if(( data_rx_sop_0 == 0 ) && ( data_rx_eop_0 == 0 ))
+                  pack_size = pack_size + 1;
+                else if( data_rx_eop_0 == 1 )
+                  begin
+                    pack_size   = pack_size + 1;
+                    i_pack_size = 0;
+                    i_ram_size  = 0;
+                    pack_check  = 0;
+                    end_time_pack = $time;
+                    value_pack_TEST_3 = value_pack_TEST_3 + 1;
+                    
+                    array_of_size_rand_pack[pack_size] = array_of_size_rand_pack[pack_size] + 1;
+                    if((check_not_repeats == array_of_size_rand_pack[pack_size])||((check_not_repeats + 1) == array_of_size_rand_pack[pack_size]))
+                      check_not_repeats = check_not_repeats;
+                    else if(((check_not_repeats + 2) == array_of_size_rand_pack[pack_size]))
+                      check_not_repeats = array_of_size_rand_pack[pack_size] - 1;
+                    else 
+                      $error("repeat pack size");
+                    
+                    if( flag_print_all_rx_data == PRINT_ALL_RX )
+                      $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
+                      forever
+                        begin
+
+                          if( i_pack_size%4 == 0 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][7:0];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 1 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][15:8];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 2 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][23:16];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                          else if( i_pack_size%4 == 3 )
+                            begin
+                              result     = test_queue.pop_front( );
+                              ref_result = ram_temp[i_ram_size][31:24];
+                              if( result != ref_result )
+                                begin
+                                  pack_check = 1;
+                                  $error("Data mismatch");
+                                end
+                              if( flag_print_all_rx_data == PRINT_ALL_RX )
+                                $display( "1)Number of word = %d 2)result = %h 3)ref_result(ram) %h  ", i_pack_size ,result,ref_result );
+                            end
+                            
+                          i_pack_size = i_pack_size + 1;
+                          i_ram_size  = i_pack_size/4;
+                          
+                          if(i_pack_size >= pack_size)
+                            begin
+                              if( pack_check == 0 )
+                                $display("Pack check good! Size = %d , %d ns", pack_size,$time  );
+                              else if( pack_check == 0 )
+                                $display("No pack check good!!! Size = %d , %d ns", pack_size,$time  );
+                              break;
+                            end
+          
+                        end
+                  end
+              end
+          end
+        else if(start_test_3_pack == 0)
+          begin
+            //TEST 3
+            value_pack = 0;
+            //END TEST 3
+          end
+      end
+  
+  end
+
+logic [13:0] cout_one_sec;   //125Mhz 1/10000 sec
+logic [31:0] count_time_work; 
+ 
+initial
+  begin
+  
+  integer i = 0;
+  
+  
+    forever
+      begin
+        @(posedge reg_clk);
+        if(flag_test_time == 1)
+          begin
+            flag_test_time <= 0;
+            start_test_3_pack = 0;
+            read_MM ( 1, 0);
+            if(readdata_AvMM_S_o[0] == 0)
+              $display("1)Start time RX = %d ns, 2)End time RX = %d ns, 3) Work time %d , %d ns", start_time_pack, end_time_pack, (end_time_pack - start_time_pack),$time  );
+            else
+              $error("NOT END TX");
+            $display("REAL work speed: 1)Work time = %d ,2) Wait time = %d,3) Work in Mbyte %d, %d ns", (work_time_pack*8), (end_time_pack - start_time_pack - work_time_pack*8),((work_time_pack*8)*1000/(end_time_pack - start_time_pack)),$time  );
+            $display("EXPECT work speed: 1)Work time = %d ,2) Wait time = %d,3) Work in Mbyte %d, %d ns", (work_time_pack*8 + value_pack_TEST_3*176), (end_time_pack - start_time_pack - work_time_pack*8 - value_pack_TEST_3*176),((work_time_pack*8 + value_pack_TEST_3*176)*1000/(end_time_pack - start_time_pack)),$time  );
+            start_time_pack = 0;
+            end_time_pack   = 0;
+            work_time_pack  = 0;
+            
+            $display("Rand pack sizes! %d ns",$time  );
+            //$display("80) number of packs = %d , %d ns",array_of_size_rand_pack[80],$time  );
+            forever
+              begin
+                if(array_of_size_rand_pack[i] > 0)
+                  $display("%d) number of packs = %d , %d ns",i,array_of_size_rand_pack[i],$time  );
+                i= i + 1;
+                if(i >= 1600)
+                  break;
+              end
+            
+          end
+        else if( flag_start_time_count == 0 )
+          begin
+            cout_one_sec    <= 0;
+            count_time_work <= 0;
+          end
+        else if( cout_one_sec >= GEN_VAL_PART_OF_SEC )
+          begin
+            cout_one_sec    <= 0;
+            count_time_work <= count_time_work + 1;
+            if(count_time_work >= 32'h0000002)
+              begin
+                flag_test_time        = 1;
+                flag_start_time_count = 0;
+              end
+          end
+        else if( flag_start_time_count == 1 )
+          begin
+            cout_one_sec <= cout_one_sec + 1;
+          end
+      end  
+  end
+
 // $<RTL_CORE_INSTANCE>
 Tse_1 dut
 (
@@ -795,13 +909,9 @@ Tse_1 dut
    .data_tx_eop_0     ( eop_aval ),
    .waitrequest       (waitrequest_gen_tse),
    .address           (address_gen_tse),
-//      .address           (reg_addr),                          //test
    .writedata         (writedata_gen_tse),
-//      .writedata         (reg_data_in),                       //test
    .write             (write_gen_tse),
-//      .write             (reg_wr),                            //test
    .read              (read_gen_tse),
-//      .read              (reg_rd),                            //test
    .readdata          (readdata_gen_tse),
    .mac_tx_clk_0      ( ),  //multiply driven
    .m_rx_err_0        ( ),
@@ -843,7 +953,6 @@ gen_pack_TSE dut_gen (
     .gen_read_AvMM_M_o          (read_gen_tse),
     
 //Avalon-ST Source
-    //.gen_ready_i                 ( ready_aval ),
     .gen_ready_i                 ( (flag_test_Aval_ST_ready == 1) ? test_ready_ST : ready_aval ),
 
     .gen_data_o                  ( data_aval ),
