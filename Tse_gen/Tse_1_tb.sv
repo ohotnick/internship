@@ -31,11 +31,20 @@ parameter INIT_TSE_WORD_01000000 = 32'h01000000;
 parameter PRINT_ALL_RX    = 1;
 parameter NO_PRINT_ALL_RX = 0;
 
+parameter MIN_PACK_SIZE = 11'h3e;   //62
+//parameter MIN_PACK_SIZE = 11'h3c;
+//parameter MAX_PACK_SIZE = 11'h50;
+parameter MAX_PACK_SIZE = 11'h5dc;  //1500
+//parameter SPEED_WORK    = 10'h1f4;
+parameter SPEED_WORK    = 10'h320; //800
+
 parameter VALUE_OF_PACK_5          = 32'h0000005;
 parameter REGISTER_VALUE_PACK_0x01 = 1;
-parameter VALUE_OF_TIME_2          = 32'h0000002;
+//parameter VALUE_OF_TIME_2          = 32'h0000002;
+parameter VALUE_OF_TIME_2          = 32'h0000008;
 parameter REGISTER_TIME_PACK_0x02  = 2;
-parameter VAL_RND_62_80_SPEED_500  = 32'h7d02803e;
+//parameter VAL_RND_62_80_SPEED_500  = 32'h7d02803e;
+parameter VAL_RND_62_80_SPEED_500  = {SPEED_WORK,MAX_PACK_SIZE,MIN_PACK_SIZE};
 parameter REG_RAND_SPEED_PACK_0x03 = 3;
 parameter START_TX_PACKTX_SIZE_80  = 32'h0000281;
 parameter REG_CONTL_0x00           = 0;
@@ -110,7 +119,7 @@ integer start_time_pack        = 0;
 integer end_time_pack          = 0;
 integer work_time_pack         = 0;
 integer value_pack_TEST_3      = 0;
-logic [31:0]array_of_size_rand_pack [(2**10)-1:0];
+logic [31:0]array_of_size_rand_pack [(2**11)-1:0];
 integer check_not_repeats      = 0;
 
 always //125
@@ -228,7 +237,7 @@ task Init_pack();
       data_ram_frame     = ram_temp[i];
       send_MM (data_ram_frame, address_ram_frame);
       i = i + 1;
-      if(i == 27)
+      if(i == 390)
         break;
     end
 
@@ -326,7 +335,7 @@ initial
     address_MM   = REGISTER_TIME_PACK_0x02;   
     send_MM (data_send_MM, address_MM);
     
-    data_send_MM = VAL_RND_62_80_SPEED_500;                //min 62, max 80, speed 500
+    data_send_MM = 32'hFA000000;                          // speed 1000
     address_MM   = REG_RAND_SPEED_PACK_0x03;   
     send_MM (data_send_MM, address_MM);
     
@@ -348,13 +357,17 @@ initial
       end
     
     #500;
+    data_send_MM = VAL_RND_62_80_SPEED_500;                //min 62, max 80, speed 500
+    address_MM   = REG_RAND_SPEED_PACK_0x03;   
+    send_MM (data_send_MM, address_MM);
     $display( " Send NEXT TX %d ns " ,$time  ); 
     start_test_3_pack = 1;
     
     data_send_MM = START_TX_SEC_RAND_SIZE;                             //start TX  секундах случ диап
     address_MM   = REG_CONTL_0x00;   
     send_MM (data_send_MM, address_MM);
-    #400000;
+    #(100000*(VALUE_OF_TIME_2+1));
+    #40000;
     $stop;
   
   end
@@ -725,11 +738,20 @@ initial
                     
                     array_of_size_rand_pack[pack_size] = array_of_size_rand_pack[pack_size] + 1;
                     if((check_not_repeats == array_of_size_rand_pack[pack_size])||((check_not_repeats + 1) == array_of_size_rand_pack[pack_size]))
-                      check_not_repeats = check_not_repeats;
+                      begin
+                        check_not_repeats = check_not_repeats;
+                        //$display( " !!check_not_repeats = check_not_repeats!! 1)array_of_size_rand_pack[pack_size] = %d   %d ns ",array_of_size_rand_pack[pack_size] ,$time );
+                      end
                     else if(((check_not_repeats + 2) == array_of_size_rand_pack[pack_size]))
-                      check_not_repeats = array_of_size_rand_pack[pack_size] - 1;
+                      begin
+                        check_not_repeats = array_of_size_rand_pack[pack_size] - 1;
+                        //$display( " !!!check_not_repeats = array_of_size_rand_pack[pack_size] - 1!!! 1)array_of_size_rand_pack[pack_size] = %d   %d ns ",array_of_size_rand_pack[pack_size] ,$time );
+                      end
                     else 
-                      $error("repeat pack size");
+                      begin
+                        //$display( " !!!!else!!!! 1)array_of_size_rand_pack[pack_size] = %d   %d ns ",array_of_size_rand_pack[pack_size] ,$time );
+                        $error("repeat pack size");
+                      end
                     
                     if( flag_print_all_rx_data == PRINT_ALL_RX )
                       $display( " Size send pack = %d,  %d ns ",pack_size ,$time  );
@@ -859,7 +881,8 @@ initial
           begin
             cout_one_sec    <= 0;
             count_time_work <= count_time_work + 1;
-            if(count_time_work >= 32'h0000002)
+            //if(count_time_work >= 32'h0000002)
+            if(count_time_work >= VALUE_OF_TIME_2)
               begin
                 flag_test_time        = 1;
                 flag_start_time_count = 0;

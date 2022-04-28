@@ -127,6 +127,7 @@ always_ff @( posedge clk_i )
   
 logic [31:0]flagTest_ram;
 assign flagTest_ram = gen_reg.control; 
+//assign flagTest_ram = gen_reg.rand_val_speed; 
   
 always_comb
   begin
