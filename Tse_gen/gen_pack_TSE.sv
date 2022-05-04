@@ -124,9 +124,10 @@ always_ff @( posedge clk_i )
     else
       state_MM <= next_MM;
   end
-  
-logic [31:0]flagTest_ram;
-assign flagTest_ram = gen_reg.control; 
+
+logic flag_set_control_0_bit;
+//logic [31:0]flagTest_ram;
+//assign flagTest_ram = gen_reg.control; 
 //assign flagTest_ram = gen_reg.rand_val_speed; 
   
 always_comb
@@ -207,6 +208,9 @@ always_ff @(posedge clk_i)
         
         gen_write_AvMM_M_o_tv         <= 0;
         gen_read_AvMM_M_o_tv          <= 0;
+        
+        if(flag_set_control_0_bit == 1)
+          gen_reg.control[START_S_BIT] <= 0;
         
         case (next_MM)
           IDLE:     begin
@@ -368,7 +372,7 @@ logic gen_endofpacket_o_tv;
 
 logic [31:0]temp_val_data_tx;
 logic [1:0]count_32to8;
-logic [10:0]size_tv;
+logic [8:0]size_tv;
 logic [10:0]count_end_tx;
 logic [10:0]size_pack;
 logic [31:0]count_pack_work;
@@ -387,8 +391,8 @@ logic flag_range_1_ready;
 logic flag_range_2_ready;
 logic flag_range_3_ready;
 logic [10:0]rand_range_1;
-logic [9:0]rand_range_2;
-logic [9:0]rand_range_3;
+logic [10:0]rand_range_2;
+logic [10:0]rand_range_3;
 logic flag_next_rand_size;
 logic [10:0]rand_range_1_count;
 logic [9:0]rand_range_2_count;
@@ -471,10 +475,13 @@ always_ff @(posedge clk_i)
         count_end_tx     <= 0;
         count_pack_work  <= 0;
         flag_startwork_tx <= 0;
+        
+        flag_set_control_0_bit <= 0;
       end
     else
       begin
         gen_startofpacket_o_tv <= 0;
+        flag_set_control_0_bit <= 0;
         case (next_ST)
           IDLE_ST:  begin
                       
@@ -539,18 +546,18 @@ always_ff @(posedge clk_i)
                           else if( count_32to8 == 1)
                             begin
                               gen_data_o_tv <= temp_val_data_tx[15:8];
-                              r_w_addr_tv_ST   <= (size_tv + 1);
+                              r_w_addr_tv_ST   <= size_tv + 9'h1;
                             end
                           else if( count_32to8 == 2)
                             gen_data_o_tv <= temp_val_data_tx[23:16];
                           else if( count_32to8 == 3)
-                            gen_data_o_tv <= temp_val_data_tx[32:24];
+                            gen_data_o_tv <= temp_val_data_tx[31:24];
                             
-                          count_end_tx <= count_end_tx + 1;
-                          count_32to8  <= count_32to8 + 1;
+                          count_end_tx <= count_end_tx + 11'h1;
+                          count_32to8  <= count_32to8 + 2'h1;
                           if( count_32to8 == 3 )
                             begin
-                              size_tv          <= size_tv + 1;
+                              size_tv          <= size_tv + 9'h1;
                               temp_val_data_tx <= q_tv;
                             end
                             
@@ -567,12 +574,14 @@ always_ff @(posedge clk_i)
                                   count_pack_work <= count_pack_work + 1;
                                   if((count_pack_work + 1) >= gen_reg.count_pack_work)
                                     begin
-                                      gen_reg.control[START_S_BIT] <= 0;
+                                      //gen_reg.control[START_S_BIT] <= 0;
+                                      flag_set_control_0_bit <= 1;
                                     end
                                 end
                               else if(( count_time_work >= gen_reg.time_work) && ( gen_reg.control[PACK_OR_SEC] == 1 ))
                                 begin
-                                  gen_reg.control[START_S_BIT] <= 0;
+                                  //gen_reg.control[START_S_BIT] <= 0;
+                                  flag_set_control_0_bit <= 1;
                                 end
                             end
                     
@@ -592,13 +601,13 @@ always_ff @(posedge clk_i)
                           else if( count_32to8 == 2)
                             gen_data_o_tv <= temp_val_data_tx[23:16];
                           else if( count_32to8 == 3)
-                            gen_data_o_tv <= temp_val_data_tx[32:24];
+                            gen_data_o_tv <= temp_val_data_tx[31:24];
                             
-                          count_end_tx <= count_end_tx + 1;
-                          count_32to8  <= count_32to8 + 1;
+                          count_end_tx <= count_end_tx + 11'h1;
+                          count_32to8  <= count_32to8 + 2'h1;
                           if( count_32to8 == 3 )
                             begin
-                              size_tv          <= size_tv + 1;
+                              size_tv          <= size_tv + 9'h1;
                               temp_val_data_tx <= q_tv;
                             end
                             
@@ -639,7 +648,7 @@ always_ff @( posedge clk_i )
           end
         else if( gen_reg.control[START_S_BIT] == 1 )
           begin
-            cout_one_sec <= cout_one_sec + 1;
+            cout_one_sec <= cout_one_sec + 14'h1;
           end
         
       end
@@ -658,27 +667,27 @@ always_ff @( posedge clk_i )
     else
       begin
       
-        wait_speed_const <= 1000 - gen_reg.rand_val_speed[31:22];
+        wait_speed_const <= 10'h1000 - gen_reg.rand_val_speed[31:22];
       
         if(gen_reg.control[START_S_BIT] == 1)
           begin
             if(gen_valid_o_tv == 1)
               begin
                 if( (work_speed + 1) < gen_reg.rand_val_speed[31:22] )
-                  work_speed <= work_speed + 1;
+                  work_speed <= work_speed + 10'h1;
                 else if( gen_reg.rand_val_speed[31:22] < 1000 )
                   begin
                     work_speed       <= 0;
-                    count_work_speed <= count_work_speed + 1;
+                    count_work_speed <= count_work_speed + 11'h1;
                   end
               end
             else if((gen_valid_o_tv == 0)&&(gen_reg.control[START_S_BIT] == 1)&&(count_work_speed > 0))
               begin
                 if((wait_speed + 1) < wait_speed_const)
-                  wait_speed <= wait_speed + 1;
+                  wait_speed <= wait_speed + 10'h1;
                 else 
                   begin
-                    count_work_speed <= count_work_speed - 1;
+                    count_work_speed <= count_work_speed - 11'h1;
                     wait_speed       <= 0;
                   end
               end
@@ -722,7 +731,7 @@ always_ff @( posedge clk_i )
         if((flag_range_1_ready == 1)&&(flag_range_2_ready == 1)&&(flag_range_3_ready == 1)&&(flag_next_rand_size == 0)&&(next_ST != EOP))
           begin
             
-            range_queue         <= range_queue + 1;
+            range_queue         <= range_queue + 2'h1;
             flag_next_rand_size <= 1;
             
             if(( ((range_queue == QUEUE_VAL_3)||(range_queue == QUEUE_VAL_1))|| 
@@ -730,8 +739,8 @@ always_ff @( posedge clk_i )
                  ((range_queue == QUEUE_VAL_0)&&(rand_range_3_count >= rand_range_3)) 
                 ) &&(rand_range_1_count < rand_range_1))
               begin
-                rand_range_1_count <= rand_range_1_count + 1;
-                value_rnd_1        <= (value_rnd_1 << 2) + value_rnd_1 + 1;   
+                rand_range_1_count <= rand_range_1_count + 11'h1;
+                value_rnd_1        <= (value_rnd_1 << 2) + value_rnd_1 + 11'h1;   
                 size_pack          <= value_rnd_1 + gen_reg.rand_val_speed[10:0];
               end
               
@@ -740,15 +749,15 @@ always_ff @( posedge clk_i )
                       ((range_queue == QUEUE_VAL_0)&&(rand_range_3_count >= rand_range_3))
                      ) &&(rand_range_2_count < rand_range_2))
               begin
-                rand_range_2_count <= rand_range_2_count + 1;
-                value_rnd_2        <= (value_rnd_2 << 2) + value_rnd_2 + 1;
+                rand_range_2_count <= rand_range_2_count + 10'h1;
+                value_rnd_2        <= (value_rnd_2 << 2) + value_rnd_2 + 10'h1;
                 size_pack          <= value_rnd_2 + gen_reg.rand_val_speed[10:0] + rand_range_1;
               end
               
             else if(rand_range_3_count < rand_range_3)
               begin
-                rand_range_3_count <= rand_range_3_count + 1;
-                value_rnd_3        <= value_rnd_3 + 1;
+                rand_range_3_count <= rand_range_3_count + 10'h1;
+                value_rnd_3        <= value_rnd_3 + 10'h1;
                 size_pack          <= value_rnd_3 + gen_reg.rand_val_speed[10:0] + rand_range_1 + rand_range_2;
               end
             
@@ -834,7 +843,7 @@ always_ff @( posedge clk_i )
       begin
          
         if((gen_reg.control[START_S_BIT] == 1)&&(gen_reg.control[SIZE_PACK_BIT] == 1))
-          rand_range <= gen_reg.rand_val_speed[21:11] - gen_reg.rand_val_speed[10:0] + 1;
+          rand_range <= gen_reg.rand_val_speed[21:11] - gen_reg.rand_val_speed[10:0] + 11'h1;
         else
           begin
             flag_range_1_ready <= 0;
